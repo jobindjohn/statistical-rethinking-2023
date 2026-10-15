@@ -3,10 +3,17 @@ import pandas as pd
 import numpy as np
 import pymc as pm
 import arviz as az
+import xarray as xr
 import graphviz as gr
 import networkx as nx
+from arviz_stats.base import array_stats
 from matplotlib import pyplot as plt
+from matplotlib.cbook import normalize_kwargs
+from matplotlib.lines import Line2D
 from pathlib import Path
+from scipy import stats
+from scipy.signal import savgol_filter
+from scipy.special import logsumexp
 from typing import List, Union, Callable
 
 HERE = Path(".")
@@ -238,7 +245,250 @@ def plot_pymc_distribution(distribution: pm.Distribution, **distribution_params)
     with pm.Model() as _:
         d = distribution(name=distribution.__name__, **distribution_params)
         draws = pm.draw(d, draws=10_000)
-    return az.plot_dist(draws)
+    return plot_dist(draws)
+
+
+# ---
+# Plotting helpers for drawing onto existing matplotlib axes. ArviZ 1 plots
+# create their own figures, so overlays and subplot panels use these instead.
+
+SAMPLE_DIMS = ("chain", "draw", "sample")
+
+
+def _hdi_prob(hdi_prob):
+    return az.rcParams["stats.ci_prob"] if hdi_prob is None else hdi_prob
+
+
+def _flatten_samples(values) -> np.ndarray:
+    """Flatten array-like / DataArray draws to a 1D array without NaNs"""
+    values = np.asarray(values).ravel()
+    return values[~np.isnan(values)] if values.dtype.kind == "f" else values
+
+
+def plot_dist(
+    values,
+    values2=None,
+    ax=None,
+    color=None,
+    label=None,
+    bw=None,
+    plot_kwargs=None,
+    contourf_kwargs=None,
+):
+    """Plot the distribution of samples on an existing axes; replaces the
+    ArviZ 0.x `az.plot_dist`.
+
+    Parameters
+    ----------
+    values : array-like or xarray.DataArray
+        Samples to plot; all dimensions are flattened. Integer samples are
+        plotted as a histogram, continuous samples as a KDE.
+    values2 : array-like or xarray.DataArray, optional
+        If provided, plot the 2D KDE of `values` vs `values2` as filled contours.
+    ax : matplotlib.Axes, optional
+        Axes to draw on, by default the current axes.
+    color, label : str, optional
+        Line color and legend label. A legend is added when `label` is given.
+    bw : float or str, optional
+        KDE bandwidth; a number is an absolute bandwidth in data units.
+    plot_kwargs : dict, optional
+        Extra `Line2D` kwargs (aliases like `lw` are accepted).
+    contourf_kwargs : dict, optional
+        Extra `contourf` kwargs for the 2D case.
+
+    Returns
+    -------
+    ax : matplotlib.Axes
+    """
+    ax = plt.gca() if ax is None else ax
+    values = _flatten_samples(values)
+
+    if values2 is not None:
+        values2 = _flatten_samples(values2)
+        kde = stats.gaussian_kde(np.vstack([values, values2]))
+        xs, ys = np.meshgrid(
+            np.linspace(values.min(), values.max(), 128),
+            np.linspace(values2.min(), values2.max(), 128),
+        )
+        density = kde(np.vstack([xs.ravel(), ys.ravel()])).reshape(xs.shape)
+        ax.contourf(xs, ys, density, **(contourf_kwargs or {}))
+        ax.contour(xs, ys, density, colors="k", linewidths=0.5, alpha=0.5)
+        return ax
+
+    line_kwargs = normalize_kwargs(plot_kwargs or {}, Line2D)
+    if color is not None:
+        line_kwargs["color"] = color
+
+    if values.dtype.kind in "iub":
+        bins = np.arange(values.min(), values.max() + 2) - 0.5
+        ax.hist(values, bins=bins, density=True, label=label, **line_kwargs)
+    else:
+        kde_kwargs = {} if bw is None else {"bw": bw}
+        grid, density, _ = array_stats.kde(values, **kde_kwargs)
+        ax.plot(grid, density, label=label, **line_kwargs)
+
+    if label is not None:
+        ax.legend()
+    return ax
+
+
+def plot_hdi(x, y, hdi_prob=None, ax=None, color="C1", smooth=True, fill_kwargs=None):
+    """Plot the HDI band of draws `y` over `x` on an existing axes; replaces the
+    ArviZ 0.x `az.plot_hdi`.
+
+    Parameters
+    ----------
+    x : array-like, shape (n,)
+        Horizontal values.
+    y : array-like or xarray.DataArray
+        Draws for each `x`. Arrays have shape (n_samples, n) or (chain, draw, n);
+        DataArrays reduce over their chain/draw/sample dims.
+    hdi_prob : float, optional
+        Interval probability, by default `az.rcParams["stats.ci_prob"]`.
+    ax : matplotlib.Axes, optional
+        Axes to draw on, by default the current axes.
+    color : str
+        Band color.
+    smooth : bool
+        Interpolate and Savitzky-Golay smooth the band, as ArviZ 0.x did.
+    fill_kwargs : dict, optional
+        Extra `fill_between` kwargs, e.g. `alpha` or `label`.
+
+    Returns
+    -------
+    ax : matplotlib.Axes
+    """
+    ax = plt.gca() if ax is None else ax
+    x = np.asarray(x, dtype=float).ravel()
+
+    if isinstance(y, xr.DataArray):
+        sample_dims = [d for d in y.dims if d in SAMPLE_DIMS]
+        other_dims = [d for d in y.dims if d not in SAMPLE_DIMS]
+        y = y.transpose(*sample_dims, *other_dims).values
+    y = np.asarray(y, dtype=float).reshape(-1, x.size)
+
+    hdi = array_stats.hdi(y, _hdi_prob(hdi_prob), axis=0)
+
+    order = np.argsort(x)
+    x, hdi = x[order], hdi[order]
+    if smooth:
+        x_smooth = np.linspace(x.min(), x.max(), 200)
+        hdi = np.column_stack([np.interp(x_smooth, x, hdi[:, ii]) for ii in range(2)])
+        hdi = savgol_filter(hdi, window_length=55, polyorder=2, axis=0)
+        x = x_smooth
+
+    kwargs = {"color": color, "alpha": 0.5, "linewidth": 0}
+    kwargs.update(fill_kwargs or {})
+    ax.fill_between(x, hdi[:, 0], hdi[:, 1], **kwargs)
+    return ax
+
+
+def plot_forest(data, var_names=None, hdi_prob=None, ax=None, color="C0"):
+    """Forest plot of posterior variables (chains combined) on an existing axes.
+
+    Each row shows the posterior mean (marker), interquartile range (thick
+    line), and HDI (thin line). For standalone figures use `az.plot_forest`.
+
+    Parameters
+    ----------
+    data : xarray.DataTree
+        Inference data with a `posterior` group.
+    var_names : str or list[str], optional
+        Variables to plot, by default all posterior variables.
+    hdi_prob : float, optional
+        Interval probability, by default `az.rcParams["stats.ci_prob"]`.
+    ax : matplotlib.Axes, optional
+        Axes to draw on, by default the current axes.
+    color : str
+        Color for all rows.
+
+    Returns
+    -------
+    ax : matplotlib.Axes
+    """
+    ax = plt.gca() if ax is None else ax
+    hdi_prob = _hdi_prob(hdi_prob)
+    posterior = data["posterior"].to_dataset()
+    if var_names is None:
+        var_names = list(posterior.data_vars)
+    elif isinstance(var_names, str):
+        var_names = [var_names]
+
+    labels, rows = [], []
+    for var in var_names:
+        samples = posterior[var].stack(__sample__=("chain", "draw"))
+        element_dims = [d for d in samples.dims if d != "__sample__"]
+        if not element_dims:
+            labels.append(var)
+            rows.append(samples.values)
+            continue
+        elements = samples.stack(__element__=element_dims).transpose("__element__", ...)
+        for ii in range(elements.sizes["__element__"]):
+            element = elements.isel(__element__=ii)
+            coords = ", ".join(str(element[d].values) for d in element_dims)
+            labels.append(f"{var}[{coords}]")
+            rows.append(element.values)
+
+    rows = np.asarray(rows)
+    ys = np.arange(len(rows))[::-1]
+    hdi = array_stats.hdi(rows, hdi_prob, axis=-1)
+    quartiles = np.quantile(rows, [0.25, 0.75], axis=-1)
+
+    ax.hlines(ys, hdi[:, 0], hdi[:, 1], color=color, linewidth=2)
+    ax.hlines(ys, quartiles[0], quartiles[1], color=color, linewidth=5)
+    ax.scatter(rows.mean(axis=-1), ys, color="white", edgecolor=color, zorder=3)
+    ax.set_yticks(ys, labels)
+    ax.set_ylim(ys.min() - 0.5, ys.max() + 0.5)
+    ax.set_title(f"{hdi_prob:.0%} HDI")
+    return ax
+
+
+def waic(data, var_name=None, pointwise=False) -> pd.Series:
+    """Widely Applicable Information Criterion, on the log (ELPD) scale.
+
+    ArviZ 1 dropped WAIC in favour of LOO; this keeps WAIC available for
+    comparing against PSIS-LOO. Requires a `log_likelihood` group, e.g. from
+    `pm.compute_log_likelihood`.
+
+    Parameters
+    ----------
+    data : xarray.DataTree
+        Inference data with a `log_likelihood` group.
+    var_name : str, optional
+        Observed variable, required if the group has more than one.
+    pointwise : bool
+        Also return the pointwise values as `waic_i`.
+
+    Returns
+    -------
+    pd.Series
+        `elpd_waic`, `se`, `p_waic`, and with `pointwise=True`, `waic_i`: the
+        pointwise ELPD as a DataArray over the observation dims.
+    """
+    log_likelihood = data["log_likelihood"].to_dataset()
+    if var_name is None:
+        if len(log_likelihood.data_vars) != 1:
+            raise ValueError(
+                f"Specify var_name, one of {list(log_likelihood.data_vars)}"
+            )
+        var_name = next(iter(log_likelihood.data_vars))
+
+    log_lik = log_likelihood[var_name].stack(__sample__=("chain", "draw"))
+    n_samples = log_lik.sizes["__sample__"]
+    lppd_i = xr.apply_ufunc(
+        logsumexp, log_lik, input_core_dims=[["__sample__"]], kwargs={"axis": -1}
+    ) - np.log(n_samples)
+    p_waic_i = log_lik.var(dim="__sample__", ddof=1)
+    waic_i = lppd_i - p_waic_i
+
+    result = {
+        "elpd_waic": float(waic_i.sum()),
+        "se": float(np.sqrt(waic_i.size * waic_i.var())),
+        "p_waic": float(p_waic_i.sum()),
+    }
+    if pointwise:
+        result["waic_i"] = waic_i
+    return pd.Series(result)
 
 
 def savefig(filename):

@@ -57,3 +57,7 @@ warnings.filterwarnings("ignore")
 from matplotlib import style
 STYLE = "statistical-rethinking-2023.mplstyle"
 style.use(STYLE)
+
+# Report 89% highest density intervals, following the lectures
+az.rcParams["stats.ci_kind"] = "hdi"
+az.rcParams["stats.ci_prob"] = 0.89
