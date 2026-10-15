@@ -1,0 +1,37 @@
+[workspace]
+authors = ["Jobin John <jobin.john@chalmers.se>"]
+channels = ["conda-forge"]
+name = "statistical-rethinking-2023"
+platforms = ["win-64", "osx-arm64", "linux-64", "osx-64"]
+version = "0.1.0"
+
+[tasks]
+lab = { cmd = "jupyter lab", description = "Launch JupyterLab with the lecture notebooks" }
+
+[dependencies]
+python = ">=3.10,<3.12"
+# The notebooks were written against PyMC 5.8. Newer releases break them:
+#   5.10: CustomDist checks parameter/observed broadcasting (Lecture 19)
+#   5.17: `testval=` removed (Lecture 11)
+#   5.24: pm.MutableData removed (most lectures)
+pymc = ">=5.8,<5.10"
+arviz = ">=0.16,<1"
+# np.product (used in the notebooks) was removed in numpy 2
+numpy = ">=1.24,<2"
+scipy = ">=1.11,<1.14"
+# pandas 3 no longer accepts lists in pd.factorize (used in the notebooks)
+pandas = ">=2.1,<3"
+xarray = ">=2023.8"
+statsmodels = ">=0.14"
+patsy = ">=0.5"
+# matplotlib 3.11 rejects ArviZ's linewidth default combined with plot_kwargs={"lw": ...}
+matplotlib-base = ">=3.7,<3.11"
+seaborn = ">=0.12"
+networkx = ">=3.1"
+python-graphviz = ">=0.20"
+graphviz = ">=8"
+numba = "*"
+colorama = "*"
+watermark = ">=2.4"
+ipykernel = "*"
+jupyterlab = ">=4"

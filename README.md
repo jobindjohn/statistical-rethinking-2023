@@ -5,6 +5,18 @@ Python/PyMC 5 implementations of Richard McElreath's outstanding lecture series 
 
 
 ## Setup
+
+### Pixi (recommended)
+The environment is managed with [pixi](https://pixi.sh) via `pixi.toml` / `pixi.lock`, with locked dependencies for Windows, Linux and macOS (Intel and Apple Silicon):
+
+```bash
+$ pixi install    # create the environment from pixi.lock
+$ pixi run lab    # launch JupyterLab
+```
+
+In VS Code, select the `.pixi/envs/default` Python interpreter as the notebook kernel.
+
+### Conda (original)
 All notebooks were developed on a Mac laptop with M1 Pro ARM64 chipset. The python environment is managed using [miniconda](https://docs.conda.io/en/latest/miniconda.html). If you are on a similar hardware setup, you can initialize the environment via the standard conda workflow:
 
 ```bash
