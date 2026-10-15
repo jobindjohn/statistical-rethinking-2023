@@ -955,6 +955,94 @@ def _(idata):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
+    ## Sampling diagnostics: `check_sampling`
+
+    PyMC 6 samples with nutpie by default when it is installed. After a nutpie
+    run, PyMC no longer prints its warnings about divergences, R-hat and
+    effective sample size (ESS), so a problematic fit looks just like a good
+    one. `check_sampling` runs the same checks with PyMC's thresholds and
+    prints what it finds. The lectures call it where they discuss
+    diagnostics.
+
+    The demo checks the height model, then the devil's funnel (Lecture 14),
+    a prior that is hard for HMC to sample.
+    """)
+    return
+
+
+@app.function
+def check_sampling(data, var_names=None, max_rhat=1.01, min_ess_per_chain=100):
+    """Print warnings about sampling problems: divergences, R-hat and ESS.
+
+    Uses PyMC's checks and thresholds, which PyMC itself skips after sampling
+    with nutpie.
+
+    Parameters
+    ----------
+    data : xarray.DataTree
+        Inference data with `posterior` and `sample_stats` groups.
+    var_names : str or list[str], optional
+        Variables to check, by default all posterior variables.
+    max_rhat : float
+        Warn about variables with R-hat above this.
+    min_ess_per_chain : int
+        Warn about variables with bulk or tail ESS below this many draws per chain.
+    """
+
+    def _listed(labels, limit=5):
+        labels = [str(label) for label in labels]
+        return ", ".join(labels[:limit]) + (", ..." if len(labels) > limit else "")
+
+    problems = []
+    sample_stats = data["sample_stats"]
+    if "diverging" in sample_stats:
+        n_divergences = int(sample_stats["diverging"].sum())
+        if n_divergences:
+            problems.append(
+                f"There were {n_divergences} divergences after tuning. "
+                "Increase `target_accept` or reparameterize."
+            )
+
+    diagnostics = az.summary(data, var_names=var_names, kind="diagnostics", round_to="none")
+    high_rhat = diagnostics.index[diagnostics["r_hat"] > max_rhat]
+    if len(high_rhat):
+        problems.append(f"R-hat is larger than {max_rhat} for {_listed(high_rhat)}.")
+
+    n_chains = data["posterior"].sizes["chain"]
+    min_ess = diagnostics[["ess_bulk", "ess_tail"]].min(axis=1)
+    low_ess = diagnostics.index[min_ess < min_ess_per_chain * n_chains]
+    if len(low_ess):
+        problems.append(
+            f"The effective sample size per chain is smaller than {min_ess_per_chain} "
+            f"for {_listed(low_ess)}."
+        )
+
+    for problem in problems:
+        print(f"WARNING: {problem}")
+    if not problems:
+        print(
+            f"No sampling problems: no divergences, R-hat <= {max_rhat}, "
+            f"ESS >= {min_ess_per_chain} per chain."
+        )
+
+
+@app.cell
+def _(idata):
+    with pm.Model():
+        _v = pm.Normal("v", 0, 3)
+        pm.Normal("x", 0, pm.math.exp(_v))
+        _funnel_idata = pm.sample(progressbar=False, random_seed=1)
+
+    print("Height model:")
+    check_sampling(idata)
+    print("\nDevil's funnel:")
+    check_sampling(_funnel_idata)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     ## Model comparison: `waic`
 
     ArviZ 1 dropped WAIC in favour of PSIS-LOO (`az.loo`). Lecture 07 compares
