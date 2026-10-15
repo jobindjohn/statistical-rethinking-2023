@@ -1,51 +1,34 @@
 # Statistical Rethinking 2023 in Python
-Python/PyMC 5 implementations of Richard McElreath's outstanding lecture series [Statistical Rethinking 2023](https://www.youtube.com/playlist?list=PLDcUM9US4XdPz-KxHM4XHt7uUVGWWVSus).
 
-
-
+Python/PyMC 6 implementations of Richard McElreath's outstanding lecture series [Statistical Rethinking 2023](https://www.youtube.com/playlist?list=PLDcUM9US4XdPz-KxHM4XHt7uUVGWWVSus).
 
 ## Setup
 
-### Pixi (recommended)
 The environment is managed with [pixi](https://pixi.sh) via `pixi.toml` / `pixi.lock`, with locked dependencies for Windows, Linux and macOS (Intel and Apple Silicon):
 
 ```bash
-$ pixi install    # create the environment from pixi.lock
-$ pixi run lab    # launch JupyterLab
+pixi install    # create the environment from pixi.lock
+pixi run lab    # launch JupyterLab with the lecture notebooks
+pixi run utils  # open utils.py as a marimo notebook with demos of each helper
 ```
 
 In VS Code, select the `.pixi/envs/default` Python interpreter as the notebook kernel.
 
-### Conda (original)
-All notebooks were developed on a Mac laptop with M1 Pro ARM64 chipset. The python environment is managed using [miniconda](https://docs.conda.io/en/latest/miniconda.html). If you are on a similar hardware setup, you can initialize the environment via the standard conda workflow:
+Models are sampled with [nutpie](https://github.com/pymc-devs/nutpie), which `pm.sample()` uses automatically when every variable can be sampled with NUTS. PyMC doesn't print divergence, R-hat or ESS warnings after nutpie runs, so use `utils.check_sampling(inference)` to check a fit. Intervals default to the 89% HDI (set in `init_notebook.py`).
 
-```bash
-$ conda env create -f statistical-rethinking-2023.yml
-$ conda activate statistical-rethinking-2023
-```
-Otherwise, the Python version and standard packages that are imported in the notebooks via the `init_notebook.py` script are as follows:
+The notebooks were last executed with these versions (see [CHANGELOG.md](CHANGELOG.md) for the migration from PyMC 5):
 
-```
-Watermark:
-----------
-Python implementation: CPython
-Python version       : 3.10.12
-IPython version      : 8.15.0
-
-Compiler    : Clang 15.0.7 
-OS          : Darwin
-Release     : 22.2.0
-Machine     : arm64
-Processor   : arm
-CPU cores   : 10
-Architecture: 64bit
-
-statsmodels: 0.14.0
-numpy      : 1.24.4
-arviz      : 0.16.1
-scipy      : 1.11.2
-pymc       : 5.8.0
-pandas     : 2.1.0
-xarray     : 2023.8.0
-matplotlib : 3.7.2
-```
+| Package | Version |
+| --- | --- |
+| Python | 3.14.8 |
+| pymc | 6.3.2 |
+| pytensor | 3.3.3 |
+| arviz | 1.3.0 |
+| nutpie | 0.16.11 |
+| numpy | 2.5.4 |
+| scipy | 1.18.1 |
+| pandas | 3.0.6 |
+| xarray | 2026.9.0 |
+| statsmodels | 0.15.0 |
+| matplotlib | 3.11.2 |
+| marimo | 0.25.1 |

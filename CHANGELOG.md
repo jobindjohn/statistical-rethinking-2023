@@ -29,6 +29,11 @@ The lecture notebooks and `utils.py` now run on the latest PyMC and ArviZ releas
   - Lectures 08 and 14 call it where they discuss diagnostics.
 - `display_image` also works in marimo.
 
+### Documentation
+
+- The README describes the pixi setup only, and lists the package versions used to run the notebooks.
+- Removed `statistical-rethinking-2023.yml`. It was an osx-arm64 conda export of the old PyMC 5 environment.
+
 ### API changes in the notebooks
 
 | Old | New |
