@@ -67,8 +67,8 @@ def _(mo):
 
 @app.cell
 def _():
-    # Demo settings, matching init_notebook.py. Demo cells take `rng` as an input,
-    # so marimo runs this cell before any of them.
+    # Demo settings, matching init_notebook.py. marimo runs cells that don't depend
+    # on each other in notebook order, so this runs before the demos below.
     from matplotlib import style
 
     style.use("statistical-rethinking-2023.mplstyle")
@@ -98,7 +98,7 @@ def load_data(dataset, delimiter=";"):
 
 
 @app.cell
-def _(rng):
+def _():
     howell = load_data("Howell1")
     howell.head()
     return (howell,)
@@ -184,7 +184,7 @@ def convert_to_categorical(vals):
 
 
 @app.cell
-def _(rng):
+def _():
     _labels = pd.Series(["urban", "rural", "rural", "urban", "rural"])
     pd.DataFrame({"label": _labels, "code": convert_to_categorical(_labels)})
     return
@@ -211,7 +211,7 @@ def invlogit(x: float) -> float:
 
 
 @app.cell
-def _(rng):
+def _():
     _log_odds = np.linspace(-6, 6, 100)
     _fig, _ax = plt.subplots(figsize=(5, 3))
     plot_line(_log_odds, invlogit(_log_odds), label="invlogit")
@@ -252,7 +252,7 @@ def draw_causal_graph(
 
 
 @app.cell
-def _(rng):
+def _():
     draw_causal_graph(
         edge_list=[("X", "Y"), ("Z", "X"), ("Z", "Y"), ("U", "X"), ("U", "Y")],
         node_props={"U": {"style": "dashed"}},
@@ -504,7 +504,7 @@ def plot_2d_function(xrange, yrange, func, ax=None, **countour_kwargs):
 
 
 @app.cell
-def _(rng):
+def _():
     _mvn = stats.multivariate_normal([0, 0], [[1, 0.7], [0.7, 1]])
     _grid = np.linspace(-3, 3, 100)
     _fig, _ax = plt.subplots(figsize=(5, 5))
@@ -573,7 +573,7 @@ def _(howell, rng):
         pm.compute_log_likelihood(idata)
 
     az.summary(idata, var_names=["alpha", "beta", "sigma"])
-    return adults, height_model, idata, weight_mean
+    return adults, idata, weight_mean
 
 
 @app.cell(hide_code=True)
@@ -740,7 +740,7 @@ def plot_pymc_distribution(distribution: pm.Distribution, **distribution_params)
 
 
 @app.cell
-def _(rng):
+def _():
     _fig, _axs = plt.subplots(1, 3, figsize=(15, 3.5))
     for _ax, (_dist, _params) in zip(
         _axs,
@@ -1075,7 +1075,7 @@ def display_image(filename, width=600):
 
 
 @app.cell
-def _(rng):
+def _():
     _fig, _ax = plt.subplots(figsize=(4, 3))
     plot_pymc_distribution(pm.Normal, mu=0, sigma=1)
     _ax.set_title("saved, then displayed")
@@ -1245,7 +1245,7 @@ def _(mo):
 
 
 @app.cell
-def _(n_observations, rng):
+def _(n_observations):
     # Linear regression with a standard-normal prior on intercept and slope, as in Lecture 03
     def _linear_model(x, intercept, slope):
         return intercept + slope * x
@@ -1264,7 +1264,7 @@ def _(n_observations, rng):
     _grid = np.linspace(-2, 2, 100)
     _n = n_observations.value
 
-    np.random.seed(1)  # the helper samples trends with np.random
+    np.random.seed(3)  # the helper samples trends with np.random
     simulate_2_parameter_bayesian_learning(
         x_obs=_x[:_n],
         y_obs=_y[:_n],
