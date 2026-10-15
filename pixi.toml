@@ -7,6 +7,7 @@ version = "0.1.0"
 
 [tasks]
 lab = { cmd = "jupyter lab", description = "Launch JupyterLab with the lecture notebooks" }
+utils = { cmd = "marimo edit utils.py", description = "Open utils.py as a marimo notebook with demos of each helper" }
 
 [dependencies]
 python = ">=3.12"
@@ -29,3 +30,4 @@ colorama = "*"
 watermark = "*"
 ipykernel = "*"
 jupyterlab = ">=4"
+marimo = ">=0.25.1,<0.26"
