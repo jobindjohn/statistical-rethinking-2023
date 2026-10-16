@@ -7,7 +7,7 @@ Work happens on the `marimo` branch. The `jupyter` branch keeps the original `.i
 ## Decisions
 
 | Topic | Decision |
-|---|---|
+| --- | --- |
 | Old `.ipynb` files | Delete each one on the `marimo` branch once its `.py` replaces it |
 | Rollout | Pilot on Lecture 03, then the rest in batches |
 | Phasing | Pass 1 is a faithful port; pass 2 adds widgets |
@@ -55,7 +55,7 @@ Work happens on the `marimo` branch. The `jupyter` branch keeps the original `.i
 
 Each batch gets the automated checks, a short report of differences, approval, then a commit.
 
-- [ ] 02 + 04
+- [x] 02 + 04
 - [ ] 05 – 07
 - [ ] 08 – 11
 - [ ] 12 – 14
@@ -77,6 +77,8 @@ Spots that need extra care:
 
 - [ ] For each lecture, propose a short widget list and get approval before building anything.
 - [ ] Fix typos in the markdown text.
+- [ ] Fix bugs carried over from the original notebooks (pass 1 keeps them as they are):
+  - **Lecture 04:** under "Simulate some more people", the sample with the 10 kg boost for males is never used. The direct-effect fit on synthetic data uses the earlier `simulated_people` instead, so its plots don't show the 10 kg gap the text describes. Fit on the new sample instead.
 - [ ] Build the approved widgets, check and review them in batches as in pass 1, and commit.
 
 Candidate ideas, none of them approved yet:
