@@ -56,7 +56,7 @@ Work happens on the `marimo` branch. The `jupyter` branch keeps the original `.i
 Each batch gets the automated checks, a short report of differences, approval, then a commit.
 
 - [x] 02 + 04
-- [ ] 05 – 07
+- [x] 05 – 07
 - [ ] 08 – 11
 - [ ] 12 – 14
 - [ ] 15 – 17
@@ -79,6 +79,7 @@ Spots that need extra care:
 - [ ] Fix typos in the markdown text.
 - [ ] Fix bugs carried over from the original notebooks (pass 1 keeps them as they are):
   - **Lecture 04:** under "Simulate some more people", the sample with the 10 kg boost for males is never used. The direct-effect fit on synthetic data uses the earlier `simulated_people` instead, so its plots don't show the 10 kg gap the text describes. Fit on the new sample instead.
+  - **Lecture 06:** the bias-amplification cell sets an unused `beta_ZY = 0` and passes `beta_XY` from the earlier simulation (which happens to be 0). Set `beta_XY = 0` locally and drop `beta_ZY`.
 - [ ] Build the approved widgets, check and review them in batches as in pass 1, and commit.
 
 Candidate ideas, none of them approved yet:
