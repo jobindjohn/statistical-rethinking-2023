@@ -11,13 +11,15 @@ Work happens on the `marimo` branch. The `jupyter` branch keeps the original `.i
 | Old `.ipynb` files | Delete each one on the `marimo` branch once its `.py` replaces it |
 | Rollout | Pilot on Lecture 03, then the rest in batches |
 | Phasing | Pass 1 is a faithful port; pass 2 adds widgets |
-| Sampling | `mo.persistent_cache` on every fit, plus a `mo.ui.run_button` gate on very slow fits (e.g. the Lecture 19 ODE model) |
+| Sampling | `cached_sample` (in `init_notebook.py`) in place of `pm.sample`, plus a `mo.ui.run_button` gate on very slow fits (e.g. the Lecture 19 ODE model). Originally `mo.persistent_cache`; see Phase 0 |
 | Naming | Rename reused variables by hand: throwaway ones become cell-local (`_fig`, `_ax`), meaningful ones get descriptive names |
 | Setup | `init_notebook.py` becomes an importable module; each notebook imports explicitly in its `app.setup` block |
 | Publishing | Local only for now (WASM is not an option: PyMC and nutpie don't run in Pyodide) |
 | Plotting | Matplotlib only |
 | Widgets | `mo.ui` by default; a custom anywidget only with explicit approval each time |
-| Code visibility | `hide_code=True` on plotting and layout boilerplate; model and analysis code stays visible |
+| Code visibility | `hide_code=True` on plotting and layout boilerplate; model and analysis code stays visible (confirmed on the pilot) |
+| Seeding | Every notebook seeds any simulated data that feeds a fit, inside the simulating cell, so the cached fits are reused across sessions |
+| Typos | Pass 1 leaves the markdown text as it is; typos are fixed in pass 2 |
 | Filenames | Keep current names, e.g. `Lecture 03 - Geocentric Models.py` |
 | Validation | Automated checks on every lecture; side-by-side review of the pilot, then only flagged differences |
 | Commits | One commit per approved batch, made only after approval |
@@ -25,25 +27,29 @@ Work happens on the `marimo` branch. The `jupyter` branch keeps the original `.i
 
 ## Phase 0: shared foundation
 
-- [ ] Rewrite `init_notebook.py` as a module with a `setup()` function that applies:
+- [x] Rewrite `init_notebook.py` as a module with a `setup()` function that applies:
   - the `statistical-rethinking-2023.mplstyle` style;
   - ArviZ `stats.ci_kind = "hdi"` and `stats.ci_prob = 0.89`;
   - the warning filters.
-- [ ] Turn the watermark into a function the notebooks call in a footer cell. Drop the colorama import printing, because explicit imports make it redundant.
-- [ ] Add one sampling helper built on `mo.persistent_cache`, so every lecture caches fits the same way. The cache lives in `__marimo__/`, which is already gitignored.
-- [ ] Write a validation script (kept out of the repo) that:
+- [x] Turn the watermark into a function the notebooks call in a footer cell. Drop the colorama import printing, because explicit imports make it redundant.
+- [x] Add one sampling helper, `cached_sample`, so every lecture caches fits the same way. The cache lives in `__marimo__/cache/samples/`, which is gitignored.
+  - `mo.persistent_cache` can't do this job. PyMC models don't pickle, and when only the trace is cached, marimo misses changes to data upstream of the model and returns stale fits.
+  - `cached_sample` keys the cache on a hash of the model graph, every data and constant value in it, the coords, the `pm.sample` arguments and the PyMC version.
+  - Tested: editing the prior, the upstream data or the sampling arguments each trigger a refit; an unchanged model loads from disk.
+  - Simulated data that feeds a fit must be seeded, otherwise every session simulates new data and refits.
+- [x] Write a validation script (kept out of the repo) that:
   - runs a converted notebook headlessly;
   - extracts the `az.summary` and model-comparison tables;
   - compares them with the text outputs stored in the matching `.ipynb`, within MCMC noise.
 
 ## Phase 1: pilot on Lecture 03 (pass 1)
 
-- [ ] Run `marimo convert`.
-- [ ] Rename variables by hand, write the `app.setup` block and add caching.
-- [ ] Hide the plotting cells, and make each figure the cell's last expression.
-- [ ] Run `marimo check`, a headless run and the numeric comparison.
-- [ ] **Gate:** compare the original and converted notebooks side by side, and adjust conventions here before they spread to the other lectures.
-- [ ] After approval, delete the `.ipynb` and commit.
+- [x] Run `marimo convert`.
+- [x] Rename variables by hand, write the `app.setup` block and add caching.
+- [x] Hide the plotting cells, and make each figure the cell's last expression.
+- [x] Run `marimo check`, a headless run and the numeric comparison.
+- [x] **Gate:** compare the original and converted notebooks side by side, and adjust conventions here before they spread to the other lectures.
+- [x] After approval, delete the `.ipynb` and commit.
 
 ## Phase 2: pass 1 for the remaining lectures
 
@@ -70,6 +76,7 @@ Spots that need extra care:
 ## Phase 3: pass 2, widgets
 
 - [ ] For each lecture, propose a short widget list and get approval before building anything.
+- [ ] Fix typos in the markdown text.
 - [ ] Build the approved widgets, check and review them in batches as in pass 1, and commit.
 
 Candidate ideas, none of them approved yet:
