@@ -58,7 +58,7 @@ Each batch gets the automated checks, a short report of differences, approval, t
 - [x] 02 + 04
 - [x] 05 – 07
 - [x] 08 – 11
-- [ ] 12 – 14
+- [x] 12 – 14
 - [ ] 15 – 17
 - [ ] 18 – 20
 
