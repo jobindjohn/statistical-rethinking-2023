@@ -47,7 +47,7 @@ def _():
 def _():
     mo.md(r"""
     # Categories
-    - non-continous causes
+    - non-continuous causes
     - discrete, unordered types
     - stratifying by category: fit a separate regression (e.g. line) to each
 
@@ -57,7 +57,7 @@ def _():
 
 
 @app.cell
-def _():
+def load_howell():
     HOWELL = utils.load_data("Howell1")
 
     # Adult data
@@ -69,7 +69,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(ADULT_HOWELL, SEX):
+def adult_howell_scatter(ADULT_HOWELL, SEX):
     _fig, _ax = plt.subplots(figsize=(5, 4))
     for _ii, _label in enumerate(SEX):
         utils.plot_scatter(
@@ -85,7 +85,7 @@ def _(ADULT_HOWELL, SEX):
 
 
 @app.cell(hide_code=True)
-def _():
+def sex_height_weight_dag():
     # Draw the mediation graph
     utils.draw_causal_graph(
         edge_list=[
@@ -106,7 +106,7 @@ def _():
     - How are height, weight, and sex **causally** related?
     - How are height, weight, and sex **statistically** related?
 
-    ### The cuases aren't in the data
+    ### The causes aren't in the data
 
     Height should affect weight, not vice versa
     - ✅ $H \rightarrow W$
@@ -120,7 +120,7 @@ def _():
 
 
 @app.cell
-def _(SEX):
+def height_weight_distribution_plotter(SEX):
     # Split height by the Sex Category
     def plot_height_weight_distributions(data):
         fig, axs = plt.subplots(1, 3, figsize=(10, 3))
@@ -134,7 +134,7 @@ def _(SEX):
                 label=label,
             )
         plt.xlabel("height (cm)")
-        plt.ylabel("weight (km)")
+        plt.ylabel("weight (kg)")
         plt.legend()
         plt.title("height vs weight")
 
@@ -149,14 +149,14 @@ def _(SEX):
                     plot_kwargs=dict(linewidth=3, alpha=.6),
                 )
             plt.title(f"{var} split by sex")
-            plt.xlabel("height (cm)")
+            plt.xlabel(f"{var} ({'cm' if var == 'height' else 'kg'})")
             plt.legend()
 
     return (plot_height_weight_distributions,)
 
 
 @app.cell(hide_code=True)
-def _(ADULT_HOWELL, plot_height_weight_distributions):
+def adult_howell_distributions(ADULT_HOWELL, plot_height_weight_distributions):
     plot_height_weight_distributions(ADULT_HOWELL)
     plt.gcf()
     return
@@ -190,7 +190,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def unobserved_causes_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("H", "W"),
@@ -220,7 +220,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def synthetic_people_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("H", "W"),
@@ -258,7 +258,7 @@ def simulate_sex_height_weight(
     S: np.array[int]
         The 0/1 indicator variable sex. 1 means 'male'
     beta: np.array[float]
-        Lenght 2 slope coefficient for each sex
+        Length 2 slope coefficient for each sex
     alpha: np.array[float]
         Length 2 intercept for each sex
     """
@@ -270,7 +270,7 @@ def simulate_sex_height_weight(
 
 
 @app.cell
-def _():
+def synthetic_people_sample():
     synthetic_sex = stats.bernoulli(p=.5).rvs(size=100).astype(int)
     synthetic_people = simulate_sex_height_weight(S=synthetic_sex)
     synthetic_people.head()
@@ -278,9 +278,53 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(plot_height_weight_distributions, synthetic_people):
+def synthetic_people_distributions(
+    plot_height_weight_distributions,
+    synthetic_people,
+):
     plot_height_weight_distributions(synthetic_people)
     plt.gcf()
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    #### Explore the generative model
+    Change the sex-specific intercepts and slopes of the generative model. Height is $150$ cm (F) or $160$ cm (M) plus $\text{Normal}(0, 5)$ noise, and weight is $W = \alpha_S + \beta_S H + \text{Normal}(0, 5)$, with $\alpha_F = 0$.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def synthetic_controls():
+    synthetic_alpha_m = mo.ui.slider(-20, 20, step=1, value=0, label=r"Male weight boost $\alpha_M$ (kg)", show_value=True)
+    synthetic_beta_f = mo.ui.slider(0, 1.5, step=0.05, value=1, label=r"$\beta_F$", show_value=True)
+    synthetic_beta_m = mo.ui.slider(0, 1.5, step=0.05, value=1, label=r"$\beta_M$", show_value=True)
+    synthetic_n = mo.ui.slider(steps=[20, 50, 100, 200, 500, 1000], value=100, label="People", show_value=True)
+    return synthetic_alpha_m, synthetic_beta_f, synthetic_beta_m, synthetic_n
+
+
+@app.cell(hide_code=True)
+def synthetic_explorer(
+    plot_height_weight_distributions,
+    synthetic_alpha_m,
+    synthetic_beta_f,
+    synthetic_beta_m,
+    synthetic_n,
+):
+    np.random.seed(12)
+    _sex = stats.bernoulli(p=.5).rvs(size=synthetic_n.value).astype(int)
+    _people = simulate_sex_height_weight(
+        S=_sex,
+        beta=np.array([synthetic_beta_f.value, synthetic_beta_m.value]),
+        alpha=np.array([0, synthetic_alpha_m.value]),
+    )
+    plot_height_weight_distributions(_people)
+    mo.vstack([
+        mo.hstack([synthetic_alpha_m, synthetic_beta_f, synthetic_beta_m, synthetic_n], justify="start", wrap=True),
+        plt.gcf(),
+    ])
     return
 
 
@@ -317,7 +361,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def height_on_weight_estimand_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("H", "W"),
@@ -345,7 +389,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def total_effect_estimand_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("H", "W"),
@@ -375,7 +419,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def direct_effect_estimand_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("H", "W"),
@@ -417,7 +461,7 @@ def _():
     \end{align*}
     $$
 
-    For sex $S\in \{M, F\}$, we can model sex-specific  weight weight $W$ as
+    For sex $S\in \{M, F\}$, we can model sex-specific weight $W$ as
 
     $$
     \begin{align*}
@@ -449,7 +493,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def total_effect_stratified_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("H", "W"),
@@ -472,7 +516,7 @@ def _():
 
 
 @app.cell
-def _():
+def simulate_total_effect():
     np.random.seed(12345)
     _n_simulations = 100
     simulated_females = simulate_sex_height_weight(
@@ -486,14 +530,14 @@ def _():
     )
 
     _simulated_delta = simulated_males - simulated_females
-    _mean_simualted_delta = _simulated_delta.mean()
+    _mean_simulated_delta = _simulated_delta.mean()
     _fig, _ax = plt.subplots()
     utils.plot_dist(_simulated_delta['weight'].values)
     plt.axvline(
-        _mean_simualted_delta['weight'],
+        _mean_simulated_delta['weight'],
         linestyle='--',
         color='k',
-        label="Mean difference" + f"={_mean_simualted_delta['weight']:1.2f}"
+        label="Mean difference" + f"={_mean_simulated_delta['weight']:1.2f}"
     )
     plt.xlabel("M - F")
     plt.legend()
@@ -533,15 +577,15 @@ def fit_total_effect_model(data):
 
 
 @app.cell
-def _(simulated_females, simulated_males):
-    # Concatentate simulations and code sex
+def simulated_total_effect_fit(simulated_females, simulated_males):
+    # Concatenate simulations and code sex
     simulated_people = pd.concat([simulated_females, simulated_males])
     simulated_total_effect_inference, simulated_total_effect_model = fit_total_effect_model(simulated_people)
     return simulated_people, simulated_total_effect_inference
 
 
 @app.cell
-def _(simulated_total_effect_inference):
+def simulated_total_effect_summary(simulated_total_effect_inference):
     simulated_summary = az.summary(simulated_total_effect_inference, var_names=['alpha', 'sigma'])
     simulated_delta = (simulated_summary.iloc[1] - simulated_summary.iloc[0])['mean']
     print(f"Delta in average sex-specific weight: {simulated_delta:1.2f}")
@@ -550,7 +594,6 @@ def _(simulated_total_effect_inference):
     return
 
 
-# Plotting helper functions
 @app.function
 def plot_model_posterior(inference, effect_type: str = "Total"):
     np.random.seed(123)
@@ -586,7 +629,7 @@ def plot_model_posterior(inference, effect_type: str = "Total"):
     plt.title("Posterior Predictive")
 
 
-    # Plost Contrasts
+    # Plot Contrasts
     ## Posterior Contrast
     plt.sca(axs[1][0])
     posterior_contrast = posterior["alpha"].sel(sex='M') - posterior["alpha"].sel(sex='F')
@@ -682,14 +725,17 @@ def plot_posterior_lines(data, inference, centered=False):
 
 
 @app.cell(hide_code=True)
-def _(simulated_people, simulated_total_effect_inference):
+def simulated_total_effect_lines(
+    simulated_people,
+    simulated_total_effect_inference,
+):
     plot_posterior_lines(simulated_people, simulated_total_effect_inference, centered=True)
     plt.gcf()
     return
 
 
 @app.cell(hide_code=True)
-def _(simulated_total_effect_inference):
+def simulated_total_effect_posterior(simulated_total_effect_inference):
     plot_model_posterior(simulated_total_effect_inference)
     plt.gcf()
     return
@@ -704,13 +750,13 @@ def _():
 
 
 @app.cell
-def _(ADULT_HOWELL):
+def howell_total_effect_fit(ADULT_HOWELL):
     adult_howell_total_effect_inference, adult_howell_total_effect_model = fit_total_effect_model(ADULT_HOWELL)
     return (adult_howell_total_effect_inference,)
 
 
 @app.cell
-def _(adult_howell_total_effect_inference):
+def howell_total_effect_summary(adult_howell_total_effect_inference):
     adult_howell_total_effect_summary = az.summary(adult_howell_total_effect_inference, var_names=['alpha'])
     adult_howell_total_effect_delta = (adult_howell_total_effect_summary.iloc[1] - adult_howell_total_effect_summary.iloc[0])['mean']
     print(f"Delta in average sex-specific weight: {adult_howell_total_effect_delta:1.2f}")
@@ -733,14 +779,17 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(adult_howell_total_effect_inference):
+def howell_total_effect_posterior(adult_howell_total_effect_inference):
     plot_model_posterior(adult_howell_total_effect_inference)
     plt.gcf()
     return
 
 
 @app.cell(hide_code=True)
-def _(ADULT_HOWELL, adult_howell_total_effect_inference):
+def howell_total_effect_lines(
+    ADULT_HOWELL,
+    adult_howell_total_effect_inference,
+):
     plot_posterior_lines(ADULT_HOWELL, adult_howell_total_effect_inference, True)
     plt.gcf()
     return
@@ -756,7 +805,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def direct_effect_stratified_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("H", "W"),
@@ -804,18 +853,17 @@ def _():
 
 
 @app.cell
-def _():
-    _ALPHA = 0.9
+def simulate_boosted_people():
     np.random.seed(1234)
     _n_synthetic_people = 200
 
     _synthetic_sex = stats.bernoulli.rvs(p=.5, size=_n_synthetic_people)
-    _synthetic_people = simulate_sex_height_weight(
+    boosted_people = simulate_sex_height_weight(
         S=_synthetic_sex,
         beta=np.array([0.5, 0.5]), # Same relationship between height & weight
         alpha=np.array([0.0, 10])  # 10kg "boost for Males"
     )
-    return
+    return (boosted_people,)
 
 
 @app.cell(hide_code=True)
@@ -852,14 +900,17 @@ def fit_direct_effect_weight_model(data):
 
 
 @app.cell
-def _(simulated_people):
-    direct_effect_simulated_inference, direct_effect_simulated_model = fit_direct_effect_weight_model(simulated_people)
+def direct_effect_simulated_fit(boosted_people):
+    direct_effect_simulated_inference, direct_effect_simulated_model = fit_direct_effect_weight_model(boosted_people)
     return direct_effect_simulated_inference, direct_effect_simulated_model
 
 
 @app.cell(hide_code=True)
-def _(direct_effect_simulated_inference, simulated_people):
-    plot_posterior_lines(simulated_people, direct_effect_simulated_inference, centered=True)
+def direct_effect_simulated_lines(
+    boosted_people,
+    direct_effect_simulated_inference,
+):
+    plot_posterior_lines(boosted_people, direct_effect_simulated_inference, centered=True)
     plt.gcf()
     return
 
@@ -874,7 +925,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(direct_effect_simulated_inference):
+def direct_effect_simulated_posterior(direct_effect_simulated_inference):
     plot_model_posterior(direct_effect_simulated_inference, "Direct")
     plt.gcf()
     return
@@ -889,13 +940,13 @@ def _():
 
 
 @app.cell
-def _(ADULT_HOWELL):
+def direct_effect_howell_fit(ADULT_HOWELL):
     direct_effect_howell_inference, direct_effect_howell_model = fit_direct_effect_weight_model(ADULT_HOWELL)
     return direct_effect_howell_inference, direct_effect_howell_model
 
 
 @app.cell(hide_code=True)
-def _(ADULT_HOWELL, direct_effect_howell_inference):
+def direct_effect_howell_lines(ADULT_HOWELL, direct_effect_howell_inference):
     plot_posterior_lines(ADULT_HOWELL, direct_effect_howell_inference, True)
     plt.gcf()
     return
@@ -910,7 +961,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(direct_effect_howell_inference):
+def direct_effect_howell_posterior(direct_effect_howell_inference):
     plot_model_posterior(direct_effect_howell_inference, "Direct")
     plt.gcf()
     return
@@ -933,8 +984,7 @@ def plot_heightwise_contrast(model, inference):
             pm.set_data(
                 {
                     "S": np.ones_like(heights).astype(int) * ii,
-                    "H": heights,
-                    "Hbar": heights.mean()
+                    "H": heights,  # keep the training-data Hbar
                 }
             )
             ppds[s] = pm.sample_posterior_predictive(inference, extend_inferencedata=False).posterior_predictive["W_obs"]
@@ -952,7 +1002,10 @@ def plot_heightwise_contrast(model, inference):
 
 
 @app.cell(hide_code=True)
-def _(direct_effect_howell_inference, direct_effect_howell_model):
+def howell_heightwise_contrast(
+    direct_effect_howell_inference,
+    direct_effect_howell_model,
+):
     _fig, _ax = plt.subplots()
     plot_heightwise_contrast(direct_effect_howell_model, direct_effect_howell_inference)
     _fig
@@ -962,13 +1015,16 @@ def _(direct_effect_howell_inference, direct_effect_howell_model):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    When stratifying by Height, we see that Sex has very little, if any causal effect on height. i.e. **a lion's share of the causal effect on weight comes via height.**
+    When stratifying by Height, we see that Sex has very little, if any causal effect on weight. i.e. **a lion's share of the causal effect on weight comes via height.**
     """)
     return
 
 
 @app.cell(hide_code=True)
-def _(direct_effect_simulated_inference, direct_effect_simulated_model):
+def simulated_heightwise_contrast(
+    direct_effect_simulated_inference,
+    direct_effect_simulated_model,
+):
     # Try on the simulated data
     _fig, _ax = plt.subplots()
     plot_heightwise_contrast(direct_effect_simulated_model, direct_effect_simulated_inference)
@@ -997,7 +1053,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(HOWELL):
+def howell_all_ages_scatter(HOWELL):
     _fig, _ax = plt.subplots(figsize=(4, 4))
     HOWELL.plot(x='height', y='weight', kind='scatter', ax=_ax)
     _fig
@@ -1009,15 +1065,15 @@ def _():
     mo.md(r"""
     ## Polynomial Linear Models
 
-    $$\mu_i = \alpha + \sum_i^D \beta_i x^D $$
+    $$\mu_i = \alpha + \sum_{d=1}^D \beta_d x^d $$
 
     ### Issues
-    - symmetric -- strange edge anomolies
+    - symmetric -- strange edge anomalies
     - global models, so no local interpolation
 
     ### Quadratic Polynomial Model
 
-    $$\mu_i = \alpha + \beta_2 x + \beta_2 x^2 $$
+    $$\mu_i = \alpha + \beta_1 x + \beta_2 x^2 $$
     """)
     return
 
@@ -1038,7 +1094,7 @@ def plot_polynomial_sample(degree, random_seed=123):
 
 
 @app.cell(hide_code=True)
-def _():
+def polynomial_prior_samples():
     _fig, _ax = plt.subplots()
     for _degree in [1, 2, 3, 4]:
         plot_polynomial_sample(_degree)
@@ -1049,14 +1105,54 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    #### Explore random polynomials
+    Draw random polynomials $\mu = \sum_{d=1}^D \beta_d x^d$ with $\beta_d \sim \text{Normal}(0, 1)$. As the degree grows, the curves stay flat near $x = 0$ and swing wildly near the edges.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def polynomial_prior_controls():
+    polynomial_degree = mo.ui.slider(1, 6, value=2, label="Degree $D$", show_value=True)
+    polynomial_n_draws = mo.ui.slider(1, 20, value=10, label="Draws", show_value=True)
+    polynomial_resample = mo.ui.button(value=0, on_click=lambda count: count + 1, label="New draws")
+    return polynomial_degree, polynomial_n_draws, polynomial_resample
+
+
+@app.cell(hide_code=True)
+def polynomial_prior_explorer(
+    polynomial_degree,
+    polynomial_n_draws,
+    polynomial_resample,
+):
+    _rng = np.random.default_rng(polynomial_resample.value)
+    _xs = np.linspace(-1, 1, 100)
+    _fig, _ax = plt.subplots(figsize=(6, 4))
+    for _draw in range(polynomial_n_draws.value):
+        _betas = _rng.normal(0, 1, size=polynomial_degree.value)
+        _ys = sum(_beta * _xs ** (_d + 1) for _d, _beta in enumerate(_betas))
+        plt.plot(_xs, _ys, color="C0", alpha=.6)
+    plt.xlabel("x")
+    plt.ylabel("$\\mu$")
+    plt.title(f"Random degree-{polynomial_degree.value} polynomials")
+    mo.vstack([
+        mo.hstack([polynomial_degree, polynomial_n_draws, polynomial_resample], justify="start", gap=2),
+        _fig,
+    ])
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     #### Simulate Bayesian Updating for Quadratic Polynomial Model
-    For the following simulation, we'll use a custom utility function `utils.simulate_2_parameter_bayesian_learning` for simulating general Bayeisan posterior update simulation. Here's the API for that function (for more details see `utils.py`)
+    For the following simulation, we'll use a custom utility function `utils.simulate_2_parameter_bayesian_learning` for simulating general Bayesian posterior update simulation. Here's the API for that function (for more details see `utils.py`)
     """)
     return
 
 
 @app.cell
-def _():
+def bayesian_learning_docs():
     mo.plain_text(inspect.getdoc(utils.simulate_2_parameter_bayesian_learning))
     return
 
@@ -1106,46 +1202,67 @@ def _():
 
 
 @app.cell
-def _():
+def quadratic_grid_data():
     np.random.seed(123)
     _RESOLUTION = 100
-    _N_DATA_POINTS = 64
-    _BETA_1 = 2
-    _BETA_2 = -2
+    QUAD_N_DATA_POINTS = 64
+    QUAD_BETA_1 = 2
+    QUAD_BETA_2 = -2
     _INTERCEPT = 0
 
     # Generate observations
-    _x = stats.norm().rvs(size=_N_DATA_POINTS)
-    _y = _INTERCEPT + _BETA_1 * _x + _BETA_2 * _x ** 2 + stats.norm.rvs(size=_N_DATA_POINTS) * .5
+    quad_x = stats.norm().rvs(size=QUAD_N_DATA_POINTS)
+    quad_y = _INTERCEPT + QUAD_BETA_1 * quad_x + QUAD_BETA_2 * quad_x ** 2 + stats.norm.rvs(size=QUAD_N_DATA_POINTS) * .5
 
-    _beta_1_grid = np.linspace(-3, 3, _RESOLUTION)
-    _beta_2_grid = np.linspace(-3, 3, _RESOLUTION)
+    quad_beta_1_grid = np.linspace(-3, 3, _RESOLUTION)
+    quad_beta_2_grid = np.linspace(-3, 3, _RESOLUTION)
+    return (
+        QUAD_BETA_1,
+        QUAD_BETA_2,
+        quad_beta_1_grid,
+        quad_beta_2_grid,
+        quad_x,
+        quad_y,
+    )
 
+
+@app.cell(hide_code=True)
+def quadratic_learning_controls():
+    quad_n_samples = mo.ui.slider(steps=[0, 2, 4, 8, 16, 32, 64], value=0, label="Data points used", show_value=True)
+    return (quad_n_samples,)
+
+
+@app.cell
+def quadratic_learning(
+    QUAD_BETA_1,
+    QUAD_BETA_2,
+    quad_beta_1_grid,
+    quad_beta_2_grid,
+    quad_n_samples,
+    quad_x,
+    quad_y,
+):
     # Vary the sample size to show how the posterior adapts to more and more data
-    _figs = []
-    for _n_samples in [0, 2, 4, 8, 16, 32, 64]:
-
-        utils.simulate_2_parameter_bayesian_learning(
-            x_obs=_x[:_n_samples],
-            y_obs=_y[:_n_samples],
-            param_a_grid=_beta_1_grid,
-            param_b_grid=_beta_2_grid,
-            true_param_a=_BETA_1,
-            true_param_b=_BETA_2,
-            model_func=quadratic_polynomial_model,
-            posterior_func=quadratic_polynomial_regression_posterior,
-            param_labels=['$\\beta_1$', '$\\beta_2$'],
-            data_range_x=(-2, 3), data_range_y=(-3, 3)
-        )
-        _figs.append(plt.gcf())
-    mo.vstack(_figs)
+    utils.simulate_2_parameter_bayesian_learning(
+        x_obs=quad_x[:quad_n_samples.value],
+        y_obs=quad_y[:quad_n_samples.value],
+        param_a_grid=quad_beta_1_grid,
+        param_b_grid=quad_beta_2_grid,
+        true_param_a=QUAD_BETA_1,
+        true_param_b=QUAD_BETA_2,
+        model_func=quadratic_polynomial_model,
+        posterior_func=quadratic_polynomial_regression_posterior,
+        param_labels=['$\\beta_1$', '$\\beta_2$'],
+        data_range_x=(-2, 3), data_range_y=(-3, 3)
+    )
+    mo.vstack([quad_n_samples, plt.gcf()])
     return
 
 
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ### Fitting N-th Order Polynomials to Height / Width Data
+    ### Fitting N-th Order Polynomials to Height / Weight Data
     """)
     return
 
@@ -1178,11 +1295,17 @@ def fit_nth_order_polynomial(data, n=3):
 
 
 @app.cell
-def _(HOWELL):
+def polynomial_fits(HOWELL):
     polynomial_models = {}
     for _order in [2, 4, 6]:
         polynomial_models[_order] = fit_nth_order_polynomial(HOWELL, n=_order)
     return (polynomial_models,)
+
+
+@app.cell(hide_code=True)
+def polynomial_order_controls(polynomial_models):
+    polynomial_order = mo.ui.radio({str(_order): _order for _order in polynomial_models}, value="2", label="Polynomial order", inline=True)
+    return (polynomial_order,)
 
 
 @app.function
@@ -1191,7 +1314,7 @@ def plot_polynomial_model_posterior_predictive(model, inference, data, order):
     # Sample the posterior predictive for regions outside of the training data
     prediction_heights = np.linspace(30, 200, 100)
     with model:
-        std_heights = (prediction_heights - data.height.mean()) / data.height.std()
+        std_heights = (prediction_heights - data.height.mean()) / data.height.std(ddof=0)  # match utils.standardize
         pm.set_data({"H": std_heights})
         ppd = pm.sample_posterior_predictive(inference, extend_inferencedata=False)
 
@@ -1206,13 +1329,10 @@ def plot_polynomial_model_posterior_predictive(model, inference, data, order):
 
 
 @app.cell(hide_code=True)
-def _(HOWELL, polynomial_models):
-    _figs = []
-    for _order in [2, 4, 6]:
-        _model, _inference = polynomial_models[_order]
-        plot_polynomial_model_posterior_predictive(_model, _inference, HOWELL, _order)
-        _figs.append(plt.gcf())
-    mo.vstack(_figs)
+def polynomial_order_explorer(HOWELL, polynomial_models, polynomial_order):
+    _model, _inference = polynomial_models[polynomial_order.value]
+    plot_polynomial_model_posterior_predictive(_model, _inference, HOWELL, polynomial_order.value)
+    mo.vstack([polynomial_order, plt.gcf()])
     return
 
 
@@ -1225,8 +1345,8 @@ def _():
 
     $$
     \begin{align*}
-    \log W_i = \text{Normal}(\mu_i, \sigma) \\
-    \mu_i = \alpha + \beta (H - \bar H)
+    \log W_i &\sim \text{Normal}(\mu_i, \sigma) \\
+    \mu_i &= \alpha + \beta (H - \bar H)
     \end{align*}
     $$
     """)
@@ -1241,7 +1361,7 @@ def _():
     - good alternative when you have little domain knowledge of the problem
 
     $$
-    \mu_i = \alpha_0 + \alpha_1 B_1 + \alpha_2 B_2 + ... \alpha_S B_K
+    \mu_i = \alpha_0 + \alpha_1 B_1 + \alpha_2 B_2 + ... \alpha_K B_K
     $$
 
     where $B$ is a set of $K$ local kernel functions
@@ -1258,7 +1378,7 @@ def _():
 
 
 @app.cell
-def _():
+def load_blossoms():
     BLOSSOMS = utils.load_data("cherry_blossoms")
     BLOSSOMS.dropna(subset=["doy"], inplace=True)
     BLOSSOMS.head()
@@ -1266,7 +1386,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(BLOSSOMS):
+def blossoms_scatter(BLOSSOMS):
     _fig, _ax = plt.subplots(figsize=(10, 3))
     plt.scatter(
         x=BLOSSOMS.year,
@@ -1289,7 +1409,7 @@ def generate_spline_basis(data, xdim='year', degree=2, n_bases=10):
 
 
 @app.cell(hide_code=True)
-def _():
+def demo_spline_basis():
     # 4 spline basis for demo
     _demo_data = pd.DataFrame({"x": np.arange(100)})
     _demo_basis = generate_spline_basis(_demo_data, "x", n_bases=4)
@@ -1318,8 +1438,73 @@ def _():
     return
 
 
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    #### Spline basis playground
+    Change the number of bases, the degree of each basis function, and the weight of each basis. The black curve is the weighted sum of the bases. Each weight only bends the curve where its basis is nonzero.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def spline_basis_controls():
+    spline_n_bases = mo.ui.slider(4, 12, value=4, label="`n_bases`", show_value=True)
+    spline_degree = mo.ui.slider(1, 3, value=2, label="Degree", show_value=True)
+    return spline_degree, spline_n_bases
+
+
+@app.cell(hide_code=True)
+def spline_weight_controls(spline_degree, spline_n_bases):
+    spline_demo_data = pd.DataFrame({"x": np.arange(100)})
+    spline_demo_basis = np.asarray(
+        generate_spline_basis(spline_demo_data, "x", degree=spline_degree.value, n_bases=spline_n_bases.value)
+    )
+    _default_weights = [1, 2, -1, 0]
+    spline_weights = mo.ui.array([
+        mo.ui.slider(
+            -3, 3, step=0.25,
+            value=_default_weights[_bi] if _bi < len(_default_weights) else 0,
+            orientation="vertical", label=f"B{_bi + 1}", show_value=True,
+        )
+        for _bi in range(spline_demo_basis.shape[1])
+    ])
+    return spline_demo_basis, spline_demo_data, spline_weights
+
+
+@app.cell(hide_code=True)
+def spline_basis_explorer(
+    spline_degree,
+    spline_demo_basis,
+    spline_demo_data,
+    spline_n_bases,
+    spline_weights,
+):
+    _n_bases = spline_demo_basis.shape[1]
+    _weights = np.array(spline_weights.value)
+    _fig, _axs = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
+    plt.sca(_axs[0])
+    for _bi in range(_n_bases):
+        plt.plot(spline_demo_data.x, spline_demo_basis[:, _bi], color=f"C{_bi}")
+    plt.title(f"{_n_bases} spline bases of degree {spline_degree.value}")
+
+    plt.sca(_axs[1])
+    for _bi in range(_n_bases):
+        plt.plot(spline_demo_data.x, _weights[_bi] * spline_demo_basis[:, _bi], color=f"C{_bi}")
+    plt.plot(spline_demo_data.x, spline_demo_basis @ _weights, label='Sum', color='k', linewidth=4)
+    plt.xlabel("x")
+    plt.legend()
+    plt.title("Sum of Weighted Bases")
+    mo.vstack([
+        mo.hstack([spline_n_bases, spline_degree], justify="start", gap=2),
+        mo.hstack(list(spline_weights), justify="start", wrap=True),
+        _fig,
+    ])
+    return
+
+
 @app.cell
-def _(BLOSSOMS):
+def blossom_spline_basis(BLOSSOMS):
     # 10 spline basis for modeling blossoms data
     blossom_basis = generate_spline_basis(BLOSSOMS)
 
@@ -1334,7 +1519,7 @@ def _(BLOSSOMS):
 
 
 @app.cell
-def _(BLOSSOMS, blossom_basis):
+def spline_prior_samples(BLOSSOMS, blossom_basis):
     _fig, _ax = plt.subplots(figsize=(10, 3))
     _n_samples = 5
     _spline_prior_sigma = 10
@@ -1346,6 +1531,43 @@ def _(BLOSSOMS, blossom_basis):
         _ax.plot(BLOSSOMS.year, _sample)
     plt.title("Prior,  $\\alpha \\sim Normal(0, 10)$")
     _fig
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    #### Explore the spline prior
+    Each prior draw weights the cherry blossom bases with $\alpha_k \sim \text{Normal}(0, \sigma)$. A larger $\sigma$ allows larger wiggles.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def spline_prior_controls():
+    spline_prior_sigma = mo.ui.slider(1, 50, value=10, label=r"Prior $\sigma$", show_value=True)
+    spline_prior_n_draws = mo.ui.slider(1, 20, value=5, label="Draws", show_value=True)
+    return spline_prior_n_draws, spline_prior_sigma
+
+
+@app.cell(hide_code=True)
+def spline_prior_explorer(
+    BLOSSOMS,
+    blossom_basis,
+    spline_prior_n_draws,
+    spline_prior_sigma,
+):
+    _rng = np.random.default_rng(4)
+    _weights = _rng.normal(0, spline_prior_sigma.value, size=(blossom_basis.shape[1], spline_prior_n_draws.value))
+    _samples = np.asarray(blossom_basis) @ _weights
+    _fig, _ax = plt.subplots(figsize=(10, 3))
+    _ax.plot(BLOSSOMS.year, _samples)
+    plt.ylim([-100, 100])
+    plt.title(f"Prior,  $\\alpha \\sim Normal(0, {spline_prior_sigma.value})$")
+    mo.vstack([
+        mo.hstack([spline_prior_sigma, spline_prior_n_draws], justify="start", gap=2),
+        _fig,
+    ])
     return
 
 
@@ -1393,20 +1615,20 @@ def _():
 
 
 @app.cell
-def _(BLOSSOMS):
+def blossom_spline_fit(BLOSSOMS):
     blossom_model, blossom_inference, blossom_model_basis = fit_spline_model(BLOSSOMS, 'year', 'doy', n_bases=20)
     plt.gcf()
     return blossom_inference, blossom_model_basis
 
 
 @app.cell
-def _(blossom_inference):
+def blossom_spline_summary(blossom_inference):
     az.summary(blossom_inference, var_names=['alpha', 'beta'])
     return
 
 
 @app.cell(hide_code=True)
-def _(BLOSSOMS, blossom_inference, blossom_model_basis):
+def blossom_weighted_bases(BLOSSOMS, blossom_inference, blossom_model_basis):
     _beta_spline_mean = blossom_inference.posterior['beta'].mean(dim=('chain', 'draw')).values
     _resulting_fit = np.zeros_like(BLOSSOMS.year)
     _fig, _ax = plt.subplots()
@@ -1424,13 +1646,39 @@ def _(BLOSSOMS, blossom_inference, blossom_model_basis):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    #### Choose the number of bases
+    Refit the cherry blossom model with a different number of bases. A new choice samples the model first (this can take a minute); later runs load it from the cache.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def blossom_refit_controls():
+    blossom_n_bases = mo.ui.slider(steps=[5, 10, 15, 20, 30, 40], value=20, label="`n_bases`", show_value=True)
+    blossom_fit_button = mo.ui.run_button(label="Fit model")
+    return blossom_fit_button, blossom_n_bases
+
+
+@app.cell
+def blossom_refit(BLOSSOMS, blossom_fit_button, blossom_n_bases):
+    _controls = mo.hstack([blossom_n_bases, blossom_fit_button], justify="start", gap=2)
+    mo.stop(not blossom_fit_button.value, _controls)
+
+    fit_spline_model(BLOSSOMS, 'year', 'doy', n_bases=blossom_n_bases.value)
+    mo.vstack([_controls, plt.gcf()])
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     ### Height as a function of age
     """)
     return
 
 
 @app.cell
-def _(HOWELL):
+def howell_height_spline(HOWELL):
     # Fit spline model to Howell height data
     fit_spline_model(HOWELL, 'age', 'height', n_bases=10)
     plt.gcf()
@@ -1446,7 +1694,7 @@ def _():
 
 
 @app.cell
-def _(HOWELL):
+def howell_weight_spline(HOWELL):
     # While we're at it, let's fit spline model to Howell weight data
     fit_spline_model(HOWELL, 'age', 'weight', n_bases=10)
     plt.gcf()
@@ -1467,7 +1715,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def flb_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("H", "W"),
@@ -1480,7 +1728,7 @@ def _():
 
 
 @app.cell
-def _(ADULT_HOWELL):
+def flb_fit(ADULT_HOWELL):
     _sex_indicator, _sex = pd.factorize(np.array(["M" if s else "F" for s in ADULT_HOWELL["male"].values]))
     with pm.Model(coords={"sex": _sex}) as flb_model:
 
@@ -1507,7 +1755,7 @@ def _(ADULT_HOWELL):
 
 
 @app.cell
-def _(flb_inference):
+def flb_summary(flb_inference):
     az.summary(flb_inference)
     return
 
@@ -1521,7 +1769,7 @@ def _():
 
 
 @app.cell
-def _(ADULT_HOWELL, flb_inference):
+def flb_contrast_plotters(ADULT_HOWELL, flb_inference):
     def plot_posterior_mean_contrast(contrast_type='weight'):
         Hbar = ADULT_HOWELL.height.mean()
         means = az.summary(flb_inference)['mean']
@@ -1530,8 +1778,8 @@ def _(ADULT_HOWELL, flb_inference):
         H_F = stats.norm(means['h[F]'], means['tau']).rvs(1000)
         H_M = stats.norm(means['h[M]'], means['tau']).rvs(1000)
 
-        W_F = stats.norm(means['beta[F]'] * (H_F - Hbar), means['sigma']).rvs(1000)
-        W_M = stats.norm(means['beta[M]'] * (H_M - Hbar), means['sigma']).rvs(1000)
+        W_F = stats.norm(means['alpha[F]'] + means['beta[F]'] * (H_F - Hbar), means['sigma']).rvs(1000)
+        W_M = stats.norm(means['alpha[M]'] + means['beta[M]'] * (H_M - Hbar), means['sigma']).rvs(1000)
         contrast = H_M - H_F if contrast_type == 'height' else W_M - W_F
 
         utils.plot_dist(contrast, color='k')
@@ -1546,10 +1794,10 @@ def _(ADULT_HOWELL, flb_inference):
         M_posterior = flb_inference.posterior.sel(sex="M")
 
         H_F = stats.norm.rvs(F_posterior['h'], F_posterior['tau'])
-        H_M = stats.norm.rvs(M_posterior['h'], F_posterior['tau'])
+        H_M = stats.norm.rvs(M_posterior['h'], M_posterior['tau'])
 
-        W_F = stats.norm.rvs(F_posterior['beta'] * (H_F - Hbar), F_posterior['sigma'])
-        W_M = stats.norm.rvs(M_posterior['beta'] * (H_M - Hbar), M_posterior['sigma'])
+        W_F = stats.norm.rvs(F_posterior['alpha'] + F_posterior['beta'] * (H_F - Hbar), F_posterior['sigma'])
+        W_M = stats.norm.rvs(M_posterior['alpha'] + M_posterior['beta'] * (H_M - Hbar), M_posterior['sigma'])
 
         contrast = H_M - H_F if contrast_type == 'height' else W_M - W_F
 
@@ -1597,21 +1845,21 @@ def _(ADULT_HOWELL, flb_inference):
 
 
 @app.cell(hide_code=True)
-def _(plot_flb_contrasts):
+def flb_weight_contrast(plot_flb_contrasts):
     plot_flb_contrasts('weight')
     plt.gcf()
     return
 
 
 @app.cell(hide_code=True)
-def _(plot_flb_contrasts):
+def flb_height_contrast(plot_flb_contrasts):
     plot_flb_contrasts('height')
     plt.gcf()
     return
 
 
 @app.cell(hide_code=True)
-def _():
+def environment():
     mo.accordion({"Environment": mo.plain_text(init_notebook.watermark_report())})
     return
 
