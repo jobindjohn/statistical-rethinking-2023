@@ -57,14 +57,14 @@ Each batch gets the automated checks, a short report of differences, approval, t
 
 - [x] 02 + 04
 - [x] 05 – 07
-- [ ] 08 – 11
+- [x] 08 – 11
 - [ ] 12 – 14
 - [ ] 15 – 17
 - [ ] 18 – 20
 
 Spots that need extra care:
 
-- **`global` statements** in Lectures 09, 10, 13 and 15. They need restructuring, because marimo's dependency graph can't follow them.
+- ~~**`global` statements** in Lectures 09, 10, 13 and 15.~~ None exist: the matches were the word "global" in docstrings, names and output (e.g. `global_intercept_model`).
 - **graphviz DAGs** in Lectures 07, 10, 11 and 16. Check that they render as cell outputs.
 - **Lecture 19:**
   - It has no `%run init_notebook.py`, so its setup differs.
