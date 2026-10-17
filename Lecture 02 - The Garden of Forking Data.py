@@ -36,7 +36,7 @@ def _():
     1. Define generative model of tossing the globe
     2. Define an estimand -- in this case, the proportion of globe covered in water?
     3. Design a statistical means to produce estimate
-    4. Test (3) using (2)
+    4. Test (3) using (1)
     5. Analyze real data
     """)
     return
@@ -55,7 +55,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def globe_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("p", "W"),
@@ -77,13 +77,13 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    - This graph defines a causal model, of how $p, N$ effect the values of $W, L$. This is the same as saying it defines some function $f$ that maps $p, N$ onto the values of $W, L \rightarrow$  $W, L = f(p, N)$
+    - This graph defines a causal model, of how $p, N$ affect the values of $W, L$. This is the same as saying it defines some function $f$ that maps $p, N$ onto the values of $W, L \rightarrow$  $W, L = f(p, N)$
     - Scientific knowledge defines what $f$ is or can be
 
     #### Bayesian data analysis
     "Very simple, very humble"
-    - For each possible explanaint of the sample
-    - Count all the ways the sampel could occur
+    - For each possible explanation of the sample
+    - Count all the ways the sample could occur
     - **The explanations with the largest number of ways to produce the sample are more plausible**
 
     The unglamourous basis of applied probability:
@@ -109,11 +109,11 @@ def _():
 @app.function
 def calculate_n_ways_possible(observations: str, n_water: int, resolution: int = 4):
     """
-    Calculate the number of ways to observing water ('W') given the toss of a globe
-    with `resolution` number of sides and `n_water` faces.
+    Calculate the number of ways of observing water ('W') given the toss of a globe
+    with `resolution` sides, `n_water` of which are water.
 
     Note: this method results in numerical precision issues (due to the product) when the
-    resolution of 16 or so, depending on your system.
+    resolution reaches 16 or so, depending on your system.
     """
     assert n_water <= resolution
 
@@ -158,7 +158,7 @@ def run_globe_tossing_simulation(observations, resolution, current_n_possible_wa
 
 
 @app.cell
-def _():
+def wlw_simulation():
     RESOLUTION = 4
     observations = "WLW"
     n_possible_ways, p_water = run_globe_tossing_simulation(observations, resolution=RESOLUTION)
@@ -174,7 +174,7 @@ def _():
 
 
 @app.cell
-def _(RESOLUTION, n_possible_ways, p_water):
+def online_update(RESOLUTION, n_possible_ways, p_water):
     _new_observation_possible_ways, _ = run_globe_tossing_simulation("W", resolution=RESOLUTION)
 
     # Online update
@@ -195,7 +195,7 @@ def _():
 
 
 @app.cell
-def _(RESOLUTION):
+def whole_sample_simulation(RESOLUTION):
     whole_sample = "WLWWWLWLW"
     n_W = len(whole_sample.replace("L", ""))
     n_L = len(whole_sample) - n_W
@@ -207,7 +207,7 @@ def _(RESOLUTION):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    show that we get identical answers with the analytical solution
+    Show that we get identical answers with the analytical solution
     """)
     return
 
@@ -215,14 +215,20 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    #### Results suggest the Analytical Soluiton $W,L = (Rp)^W \times (R - Rp)^L$
-    where $R$ is the number of possible globes, in this case 4
+    #### Results suggest the analytical solution: ways to produce $W, L = (Rp)^W \times (R - Rp)^L$
+    where $R$ is the number of sides of the globe, in this case 4
     """)
     return
 
 
 @app.cell
-def _(RESOLUTION, n_L, n_W, whole_sample_n_ways, whole_sample_p_water):
+def analytic_solution(
+    RESOLUTION,
+    n_L,
+    n_W,
+    whole_sample_n_ways,
+    whole_sample_p_water,
+):
     def calculate_analytic_n_ways_possible(p, n_W, n_L, resolution=RESOLUTION):
         """This scales much better than the brute-force method"""
         return (resolution * p) ** n_W * (resolution - resolution * p) ** n_L
@@ -243,7 +249,7 @@ def _():
 
 
 @app.cell
-def _(RESOLUTION, whole_sample_n_ways, whole_sample_p_water):
+def ways_table(RESOLUTION, whole_sample_n_ways, whole_sample_p_water):
     _n_possible_probabilities = whole_sample_n_ways / whole_sample_n_ways.sum()
 
     print("Proportion\tWays\tProbability")
@@ -257,6 +263,60 @@ def _(RESOLUTION, whole_sample_n_ways, whole_sample_p_water):
     plt.ylabel("probability")
     plt.xlabel("proportion water")
     _fig
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ### Try it: count the ways
+    Type a sequence of tosses and change the number of sides on the globe. The table counts the ways each possible globe could produce the sequence; the bars are those counts normalized into probabilities.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def garden_controls():
+    garden_sequence = mo.ui.text(value="WLWWWLWLW", label="Toss sequence (W/L)")
+    garden_sides = mo.ui.slider(2, 10, value=4, label="Globe sides", show_value=True)
+    return garden_sequence, garden_sides
+
+
+@app.cell(hide_code=True)
+def garden_explorer(
+    calculate_analytic_n_ways_possible,
+    garden_sequence,
+    garden_sides,
+):
+    _observations = "".join(_c for _c in garden_sequence.value.upper() if _c in "WL")
+    _n_W = _observations.count("W")
+    _n_L = len(_observations) - _n_W
+    _R = garden_sides.value
+
+    _p_water = np.linspace(0, 1, _R + 1)
+    _ways = np.array([calculate_analytic_n_ways_possible(_p, _n_W, _n_L, _R) for _p in _p_water])
+    _posterior = _ways / _ways.sum()
+
+    _table = mo.ui.table(
+        [
+            {"globe": "W" * _k + "L" * (_R - _k), "p(W)": round(_p, 3), "ways": f"{_w:,.0f}", "probability": round(_pr, 3)}
+            for _k, (_p, _w, _pr) in enumerate(zip(_p_water, _ways, _posterior))
+        ],
+        selection=None,
+        pagination=False,
+    )
+
+    _fig, _ax = plt.subplots(figsize=(5, 4))
+    plt.bar(x=_p_water, height=_posterior, width=.9 / _R, color='k')
+    plt.xticks(_p_water, labels=[f"{_p:.2f}" for _p in _p_water], rotation=45)
+    plt.ylabel("probability")
+    plt.xlabel("proportion water")
+    plt.title(f"{_n_W} W, {_n_L} L")
+
+    mo.vstack([
+        mo.hstack([garden_sequence, garden_sides], justify="start", gap=2),
+        mo.hstack([_table, _fig], align="center"),
+    ])
     return
 
 
@@ -287,7 +347,7 @@ def _():
 def simulate_globe_toss(p=0.7, N=9):
     """Simulate N globe tosses with a specific/known proportion
     p: float
-        The propotion of water
+        The proportion of water
     N: int
         Number of globe tosses
     """
@@ -295,14 +355,14 @@ def simulate_globe_toss(p=0.7, N=9):
 
 
 @app.cell
-def _():
+def toss_simulation_demo():
     np.random.seed(1)
     print(simulate_globe_toss())
     return
 
 
 @app.cell
-def _():
+def toss_simulation_all_water():
     pprint([simulate_globe_toss(p=1, N=11).tolist() for _ in range(10)])
     return
 
@@ -316,7 +376,7 @@ def _():
 
 
 @app.cell
-def _():
+def large_n_convergence():
     # Large N should converge to known p
     _known_p = 0.5
 
@@ -343,7 +403,7 @@ def _():
 
 
 @app.cell
-def _(RESOLUTION, calculate_analytic_n_ways_possible):
+def posterior_functions(RESOLUTION, calculate_analytic_n_ways_possible):
     def compute_posterior(observations, resolution=RESOLUTION, ax=None):
         n_W = len(observations.replace("L", ""))
         n_L = len(observations) - n_W
@@ -370,7 +430,7 @@ def _(RESOLUTION, calculate_analytic_n_ways_possible):
 
 
 @app.cell(hide_code=True)
-def _(plot_posterior, whole_sample):
+def whole_sample_posterior_plot(plot_posterior, whole_sample):
     _fig, _ax = plt.subplots()
     plot_posterior(whole_sample, resolution=4, ax=_ax)
     _fig
@@ -378,7 +438,7 @@ def _(plot_posterior, whole_sample):
 
 
 @app.cell
-def _(plot_posterior):
+def estimator_test(plot_posterior):
     np.random.seed(2)
     _p = .4
     _simulated_observations = "".join(simulate_globe_toss(p=_p, N=100))
@@ -388,6 +448,54 @@ def _(plot_posterior):
     plt.axvline(_p, color='C0', label='True Proportion')
     plt.legend()
     _fig
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ### Try it: test the estimator
+    Simulate tosses from a globe with a known proportion of water, and check that the posterior concentrates around it as the number of tosses grows. The number of tosses stops at 150: beyond that the raw counts of ways overflow floating-point numbers, which is one reason real software works with log-probabilities.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def estimator_controls():
+    estimator_true_p = mo.ui.slider(0, 1, step=0.05, value=0.4, label="True proportion of water", show_value=True)
+    estimator_n_tosses = mo.ui.slider(steps=[1, 2, 5, 10, 20, 50, 100, 150], value=100, label="Number of tosses", show_value=True)
+    estimator_resolution = mo.ui.slider(2, 100, value=20, label="Globe sides", show_value=True)
+    estimator_seed = mo.ui.number(start=0, stop=10_000, value=2, label="Random seed")
+    return (
+        estimator_n_tosses,
+        estimator_resolution,
+        estimator_seed,
+        estimator_true_p,
+    )
+
+
+@app.cell(hide_code=True)
+def estimator_explorer(
+    estimator_n_tosses,
+    estimator_resolution,
+    estimator_seed,
+    estimator_true_p,
+    plot_posterior,
+):
+    np.random.seed(estimator_seed.value)
+    _observations = "".join(simulate_globe_toss(p=estimator_true_p.value, N=estimator_n_tosses.value))
+
+    _fig, _ax = plt.subplots()
+    plot_posterior(_observations, resolution=estimator_resolution.value, ax=_ax)
+    plt.xticks(np.linspace(0, 1, 11), rotation=45)
+    plt.axvline(estimator_true_p.value, color='C0', label='True Proportion')
+    plt.legend()
+
+    mo.vstack([
+        mo.hstack([estimator_true_p, estimator_n_tosses], justify="start", gap=2),
+        mo.hstack([estimator_resolution, estimator_seed], justify="start", gap=2),
+        _fig,
+    ])
     return
 
 
@@ -405,7 +513,7 @@ def _():
 
 
 @app.cell
-def _(plot_posterior):
+def posterior_by_resolution(plot_posterior):
     np.random.seed(12)
     _p = .7
     _simulated_observations = "".join(simulate_globe_toss(p=_p, N=30))
@@ -426,7 +534,7 @@ def _():
     Analytical function that gives us the pdf as the limit as number of possibilities $\rightarrow \infty$
 
     $$
-    p = \frac{(W + L + 1)!}{W!L!} p^W(1-p)^L
+    \Pr(p \mid W, L) = \frac{(W + L + 1)!}{W!L!} p^W(1-p)^L
     $$
 
     where $\frac{(W + L + 1)!}{W!L!}$ is a normalizing constant to make the distribution sum to 1
@@ -449,7 +557,7 @@ def beta(W, L, p):
 
 @app.function
 def plot_beta_from_observations(observations: str, resolution: int = 50, **plot_kwargs):
-    """Calcualte the posterior for a string of observations"""
+    """Calculate the posterior for a string of observations"""
     n_W = len(observations.replace("L", ""))
     n_L = len(observations) - n_W
     proportions = np.linspace(0, 1, resolution)
@@ -461,7 +569,7 @@ def plot_beta_from_observations(observations: str, resolution: int = 50, **plot_
 
 
 @app.cell(hide_code=True)
-def _():
+def sequential_updating():
     # Tossing the globe
     _observations = "WLWWWLWLW"
     _fig, _axs = plt.subplots(3, 3, figsize=(8, 8))
@@ -486,10 +594,87 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    ### Try it: toss the globe yourself
+    Add tosses one at a time, by hand or at random from a globe with the chosen proportion of water, and watch the posterior update. The dashed line is the posterior before the last toss.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def tosser_state():
+    get_tosses, set_tosses = mo.state("")
+    return get_tosses, set_tosses
+
+
+@app.cell(hide_code=True)
+def tosser_true_p():
+    toss_true_p = mo.ui.slider(0, 1, step=0.05, value=0.7, label="True proportion of water (random tosses)", show_value=True)
+    return (toss_true_p,)
+
+
+@app.cell(hide_code=True)
+def tosser_buttons(set_tosses, toss_true_p):
+    toss_water_button = mo.ui.button(label="W", on_click=lambda _: set_tosses(lambda s: s + "W"))
+    toss_land_button = mo.ui.button(label="L", on_click=lambda _: set_tosses(lambda s: s + "L"))
+    toss_random_button = mo.ui.button(
+        label="Random toss",
+        on_click=lambda _: set_tosses(lambda s: s + str(simulate_globe_toss(p=toss_true_p.value, N=1)[0])),
+    )
+    toss_reset_button = mo.ui.button(label="Reset", on_click=lambda _: set_tosses(""))
+    return (
+        toss_land_button,
+        toss_random_button,
+        toss_reset_button,
+        toss_water_button,
+    )
+
+
+@app.cell(hide_code=True)
+def tosser_display(
+    get_tosses,
+    toss_land_button,
+    toss_random_button,
+    toss_reset_button,
+    toss_true_p,
+    toss_water_button,
+):
+    _observations = get_tosses()
+    _n_W = _observations.count("W")
+    _n_L = len(_observations) - _n_W
+    _proportions = np.linspace(0, 1, 200)
+
+    _fig, _ax = plt.subplots(figsize=(8, 4))
+    if _observations:
+        _previous = _observations[:-1]
+        _previous_n_W = _previous.count("W")
+        _previous_n_L = len(_previous) - _previous_n_W
+        plt.plot(_proportions, stats.beta(_previous_n_W + 1, _previous_n_L + 1).pdf(_proportions), color='k', linestyle='--', label='before last toss')
+    _color = 'C1' if _observations.endswith('W') else 'C0' if _observations else 'gray'
+    plt.plot(_proportions, stats.beta(_n_W + 1, _n_L + 1).pdf(_proportions), color=_color, linewidth=4, alpha=.5, label='posterior')
+    plt.axvline(toss_true_p.value, color='gray', linestyle=':', label='true proportion')
+    plt.xlabel("proportion water")
+    plt.ylabel("density")
+    plt.yticks([])
+    plt.legend(loc="upper center", bbox_to_anchor=(0.5, -0.18), ncol=3)
+    plt.title(f"{_n_W} W, {_n_L} L")
+
+    _shown = _observations if len(_observations) <= 60 else "..." + _observations[-60:]
+    mo.vstack([
+        mo.hstack([toss_water_button, toss_land_button, toss_random_button, toss_reset_button], justify="start"),
+        toss_true_p,
+        mo.md(f"**Tosses:** `{_shown or '(none yet)'}`"),
+        _fig,
+    ])
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     ## On Bayesian Inference...
-    - **There is no minimun sample size** -- fewer samples fall back to prior
+    - **There is no minimum sample size** -- fewer samples fall back to prior
     - **Posterior shape embodies the sample size** -- more data makes the posterior more precise
-    - There is no point estimates -- **the estimate is the entire posterior distribution**
+    - There are no point estimates -- **the estimate is the entire posterior distribution**
     - There is no true interval -- there are an infinite number of intervals one could draw, each is arbitrary and depends on what you're trying to communicate/summarize
     """)
     return
@@ -517,7 +702,7 @@ def _():
 
 
 @app.cell
-def _():
+def beta_posterior_samples():
     _a, _b = 6, 3
     beta_posterior = stats.beta(_a, _b)
     _beta_posterior_samples = beta_posterior.rvs(size=1000)
@@ -543,11 +728,11 @@ def _():
 
 
 @app.cell
-def _(beta_posterior):
+def posterior_predictive_simulation(beta_posterior):
     # Execute the entire simulation
     _posterior_samples = beta_posterior.rvs(size=10000)
 
-    # Here we use samples for the posterior to simulate sampling 10 observations from our generative model
+    # Here we use samples from the posterior to simulate sampling 10 observations from our generative model
     _posterior_predictive = [(simulate_globe_toss(p, 10) == 'W').sum() for p in _posterior_samples]
     _ppd_unique, _ppd_counts = np.unique(_posterior_predictive, return_counts=True)
 
@@ -568,7 +753,7 @@ def _(beta_posterior):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ### Sampling is Handsom & Handy
+    ### Sampling is Handsome & Handy
     Things we'll compute via sampling
     - Forecasts
     - Causal effects
@@ -584,11 +769,11 @@ def _():
     # Summary: Bayesian Data Analysis
     - For each possible explanation of data
     - Count all the ways that data could happen under that explanation
-    - The explanations with more ways to produce data are more plausable
+    - The explanations with more ways to produce data are more plausible
 
     ## Bayesian Modesty
-    - If your generative model is correct, you can't do better: this will be an optimal
-    - givens no gaurantees, only provides what you put into it
+    - If your generative model is correct, you can't do better: this will be optimal
+    - gives no guarantees, only provides what you put into it
     """)
     return
 
@@ -597,13 +782,13 @@ def _():
 def _():
     mo.md(r"""
     # Bonus: Misclassification
-    In previous examples, we  do not consider sampling error or noise in measurement. In other words the number of Water observations that we measure may not be the _true_ number value. This means that the _true_ value for $W$ is unknown / unmeasured, but we instead measure $W^*$ that is a cause of the true, unmeasured $W$ and the measurement process M. If we know our measurement error rate, we can attempt to model it
+    In previous examples, we do not consider sampling error or noise in measurement. In other words the number of Water observations that we measure may not be the _true_ value. This means that the _true_ value for $W$ is unknown / unmeasured, but we instead measure $W^*$, which is caused by the true, unmeasured $W$ and the measurement process $M$. If we know our measurement error rate, we can attempt to model it
     """)
     return
 
 
 @app.cell(hide_code=True)
-def _():
+def misclassification_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("p", "W"),
@@ -626,7 +811,7 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## Missclassification Simulation
+    ## Misclassification Simulation
     """)
     return
 
@@ -636,15 +821,15 @@ def simulate_noisy_globe_toss(p=0.7, N=9, error_rate=0.1):
     # True sample
     sample = np.random.choice(list("WL"),  size=N, p=np.array([p, 1-p]), replace=True)
 
-    # Error-induced sample
+    # Error-induced sample: each toss is misclassified with probability
+    # `error_rate`, recording a W as L and an L as W
     error_trials = np.random.rand(N) < error_rate
-    errors_effect_sample_trials = (sample == 'W') & error_trials
-    sample[errors_effect_sample_trials] = 'L'
+    sample[error_trials] = np.where(sample[error_trials] == 'W', 'L', 'W')
     return sample
 
 
 @app.cell
-def _():
+def noisy_toss_demo():
     simulate_noisy_globe_toss()
     return
 
@@ -652,7 +837,7 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## Missclassification Estimator
+    ## Misclassification Estimator
     """)
     return
 
@@ -665,7 +850,7 @@ def calculate_unnormalized_n_ways_possible_with_error(p, n_W, n_L, error_rate=0.
 
 
 @app.cell
-def _():
+def misclassification_posterior():
     _a, _b = 6, 3
     _resolution = 100
     _proportions = np.linspace(0, 1, _resolution)
@@ -694,16 +879,72 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## Measurement Matters
-    - beter to model measurement error, than to ignore it
-    - same goes for mssing data
-    - what matters is _why_ samples differ, and that we are explicit about how model it
+    ### Try it: misclassification
+    Change the error rate and the observed counts. At an error rate of 0.5 the observations carry no information, and the misclassification posterior is flat.
     """)
     return
 
 
 @app.cell(hide_code=True)
+def misclassification_controls():
+    misclassification_error_rate = mo.ui.slider(0, 0.5, step=0.01, value=0.1, label="Error rate", show_value=True)
+    misclassification_n_W = mo.ui.slider(0, 50, value=6, label="Observed W", show_value=True)
+    misclassification_n_L = mo.ui.slider(0, 50, value=3, label="Observed L", show_value=True)
+    return (
+        misclassification_error_rate,
+        misclassification_n_L,
+        misclassification_n_W,
+    )
+
+
+@app.cell(hide_code=True)
+def misclassification_explorer(
+    misclassification_error_rate,
+    misclassification_n_L,
+    misclassification_n_W,
+):
+    _n_W, _n_L = misclassification_n_W.value, misclassification_n_L.value
+    _error_rate = misclassification_error_rate.value
+    _resolution = 100
+    _proportions = np.linspace(0, 1, _resolution)
+    _error_posterior = np.array(
+        [
+            calculate_unnormalized_n_ways_possible_with_error(p, _n_W, _n_L, _error_rate) for p in _proportions
+        ]
+    )
+    _beta_posterior = beta(_n_W, _n_L, _proportions)
+
+    # Infer normalization constant Z from distribution
+    _error_posterior *= _resolution / _error_posterior.sum()
+    _beta_posterior *= _resolution / _beta_posterior.sum()
+
+    _fig, _ax = plt.subplots(figsize=(6, 5))
+    plt.plot(_proportions, _beta_posterior, label='ignoring misclassification', color='k', linewidth=4)
+    plt.plot(_proportions, _error_posterior, label=f'misclassification posterior\n(error rate={_error_rate:1.2})', linewidth=4)
+    plt.xlabel("proportion of water")
+    plt.ylabel("posterior probability")
+    plt.legend()
+
+    mo.vstack([
+        mo.hstack([misclassification_error_rate, misclassification_n_W, misclassification_n_L], justify="start", gap=2),
+        _fig,
+    ])
+    return
+
+
+@app.cell(hide_code=True)
 def _():
+    mo.md(r"""
+    ## Measurement Matters
+    - better to model measurement error, than to ignore it
+    - same goes for missing data
+    - what matters is _why_ samples differ, and that we are explicit about how we model it
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def environment():
     mo.accordion({"Environment": mo.plain_text(init_notebook.watermark_report())})
     return
 
