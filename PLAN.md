@@ -60,7 +60,7 @@ Each batch gets the automated checks, a short report of differences, approval, t
 - [x] 08 – 11
 - [x] 12 – 14
 - [x] 15 – 17
-- [ ] 18 – 20
+- [x] 18 – 20
 
 Spots that need extra care:
 
@@ -86,6 +86,9 @@ Spots that need extra care:
     - `population_model` uses `eta` (= 1) as the Exponential rate of its priors instead of `ETA = 5.1`, which it defines and never uses. Use `ETA`; this changes the fit.
   - **Lecture 16:** `distance_model` mixes poorly on `rho_squared`. The original was borderline (r̂ 1.01, 271 bulk ESS); the cached pass-1 run is worse (r̂ 1.03, 139 bulk ESS). Consider more tuning or draws, or a tighter prior.
   - **Lecture 16:** the posterior covariance-matrix plots are titled "Prior Covariance / Intercept-only phylogenetic Model", including the one for the full model. Fix the titles.
+  - **Lecture 18:** `MeanBodyMassSocialGroupSize`, `PRIMATE_ID`, `PRIMATE` and the first `coords` are used only by the commented-out `gp.Marginal` models. Delete them, or restore the `gp.Marginal` versions.
+  - **Lecture 19:** the "Prior for $k$" plot evaluates the pdf on `ps` (0 to 1) instead of `ks` (0 to 5), so the curve doesn't match its x-axis. Use `ks`.
+  - **Lecture 19:** both ODE fits mix poorly. They give r̂ > 1.01 and under 100 ESS per chain, and the simulated-data fit has divergences (106 in the original, 43 in pass 1). Consider more tuning, or a gradient-based ODE solver so the ODE parameters can use NUTS instead of Slice.
 - [ ] Build the approved widgets, check and review them in batches as in pass 1, and commit.
 
 Candidate ideas, none of them approved yet:
