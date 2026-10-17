@@ -5,6 +5,7 @@ app = marimo.App(width="medium")
 
 with app.setup:
     import inspect
+    import time
 
     import marimo as mo
     import numpy as np
@@ -36,11 +37,11 @@ def _():
     mo.md(r"""
     # Linear Regression
     - **Geocentric**
-      - unreasonably good a approximations, despite it always being incorrect
-      - can be used as a cog in a causal analysis system, despite being an innaccurate mechanistic model of real phenonena
+      - unreasonably good approximations, despite it always being incorrect
+      - can be used as a cog in a causal analysis system, despite being an inaccurate mechanistic model of real phenomena
     - **Gaussian**
       - General error model
-      - Abstracts away details, allowing us to make macro inferences, without having to incorporate micro phenonena
+      - Abstracts away details, allowing us to make macro inferences, without having to incorporate micro phenomena
 
 
 
@@ -50,18 +51,18 @@ def _():
     1. Generative: summed fluctuations (see below) tend toward Normal distribution
     2. Inferential: For estimating mean and variance, the Normal is the least informative (fewest assumptions), in the maximum entropy sense
 
-    > Variables do not need to be Normally-distributed in order estimate the correct mean and variance using a Gaussian error model.
+    > Variables do not need to be Normally-distributed in order to estimate the correct mean and variance using a Gaussian error model.
 
-    ## Generating Normal distirbution from summation of decisions
+    ## Generating Normal distribution from summation of decisions
     - Simulate a group of people randomly walking left-right, starting from a central location
-    - Resulting positions are the summation of many left-and right -- the result is Normally-distributed
-    - Normal distribution falls out processes where deviations are summed (also products)
+    - Resulting positions are the summation of many left and right steps -- the result is Normally-distributed
+    - Normal distribution falls out of processes where deviations are summed (also products)
     """)
     return
 
 
 @app.cell(hide_code=True)
-def _():
+def random_walk_normal():
     _n_people = 10000
     _n_steps = 1000
     _step_size = 0.1
@@ -95,26 +96,69 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    ### Try it: summed steps become Normal
+    Change how many steps each of 10,000 people takes, and how long each step is. With only a few steps the positions are lumpy; as steps add up, their distribution approaches the Normal curve with standard deviation $\text{step size} \times \sqrt{\text{steps}}$.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def walk_controls():
+    walk_n_steps = mo.ui.slider(steps=[1, 2, 3, 5, 10, 20, 50, 100, 200, 500, 1000], value=5, label="Steps per person", show_value=True)
+    walk_step_size = mo.ui.slider(0.1, 1, step=0.1, value=0.5, label="Step size", show_value=True)
+    return walk_n_steps, walk_step_size
+
+
+@app.cell(hide_code=True)
+def walk_explorer(walk_n_steps, walk_step_size):
+    _rng = np.random.default_rng(1)
+    _n_people = 10_000
+    _n_steps, _step_size = walk_n_steps.value, walk_step_size.value
+    _steps = _step_size * (2 * _rng.integers(0, 2, size=(_n_people, _n_steps)) - 1)
+    _positions = _steps.sum(axis=1)
+
+    _position_unique, _position_counts = np.unique(np.round(_positions, 6), return_counts=True)
+    _spacing = 2 * _step_size  # positions after n steps are 2 * step size apart
+    _sd = _step_size * np.sqrt(_n_steps)
+    _xs = np.linspace(-4 * _sd, 4 * _sd, 200)
+
+    _fig, _ax = plt.subplots(figsize=(7, 4))
+    plt.bar(_position_unique, _position_counts / (_n_people * _spacing), width=0.8 * _spacing, color='C0', label='positions')
+    plt.plot(_xs, stats.norm(0, _sd).pdf(_xs), color='k', linewidth=2, label=f'Normal(0, {_sd:.2f})')
+    plt.axvline(0, color='k', linestyle='--')
+    plt.xlim([-4 * _sd - _spacing, 4 * _sd + _spacing])
+    plt.yticks([])
+    plt.xlabel('position')
+    plt.legend()
+    plt.title(f'{_n_people:,} people after {_n_steps} steps')
+
+    mo.vstack([mo.hstack([walk_n_steps, walk_step_size], justify="start", gap=2), _fig])
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     # Drawing the Owl
     1. State clear **question**
     2. Sketch causal **assumptions** -- DAG
     3. Define a **generative model** -- generate data
-    4. Use generative model to buile (AND TEST) an **estimator**
+    4. Use generative model to build (AND TEST) an **estimator**
     5. Profit (through analyzing real data, possibly gaining info to iterate on the model)
 
     # Linear Regression
 
     ## Howell Dataset
 
-    ### (1) Question Estimand
+    ### (1) Question & Estimand
     - Describe the association between **weight** and **height**
-    - We'll focus on **adult weight** -- Adult height is approximately linear
+    - We'll focus on **adult weight** -- the relationship between adult height and weight is approximately linear
     """)
     return
 
 
 @app.cell
-def _():
+def load_howell():
     HOWELL = utils.load_data('Howell1')
     ADULT_HOWELL = HOWELL[HOWELL.age >= 18]
     HOWELL.head()
@@ -122,7 +166,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(ADULT_HOWELL, HOWELL):
+def howell_scatter(ADULT_HOWELL, HOWELL):
     _fig, _axs = plt.subplots(1, 2, figsize=(8, 4))
     plt.sca(_axs[0])
     utils.plot_scatter(HOWELL.height, HOWELL.weight, color='C1')
@@ -171,7 +215,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def weight_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("H", "W"),
@@ -198,7 +242,7 @@ def _():
     ### Generative model description:
     $$
     \begin{align}
-    W_i &\sim \beta H_i + U_i \\
+    W_i &= \beta H_i + U_i \\
     U_i &\sim \text{Normal}(0, \sigma) \\
     H_i &\sim \text{Uniform}(130, 170)
     \end{align}
@@ -208,10 +252,10 @@ def _():
     - Variables on the left
     - Definition on right
     - $\sim$ indicates sampling from a distribution
-      - e.g. $H_i \sim \text{Uniform}(130, 170)$ is definition that _height is distributed uniformly between 120 and 170_
+      - e.g. $H_i \sim \text{Uniform}(130, 170)$ is definition that _height is distributed uniformly between 130 and 170_
     - $=$ indicates expectation or (deterministic) equality
-      - e.g. $W_i \sim \beta H_i + U_i$ is definition of equation for _expected weight_
-    - subscripts $i$ indicates index of a observation/individual
+      - e.g. $W_i = \beta H_i + U_i$ is the deterministic equation for _weight_
+    - subscript $i$ indicates the index of an observation/individual
     - generally code will be written in opposite direction, because you need variables defined in order to be referenced/composed
     """)
     return
@@ -220,7 +264,7 @@ def _():
 @app.function
 def simulate_weight(H, beta, sigma):
     """
-    Generative model describe above, simulate weight given height, H,
+    Generative model described above, simulate weight given height, H,
     proportional coefficient beta, and the standard deviation of
     unobserved (Normally-distributed) noise, sigma.
     """
@@ -232,7 +276,7 @@ def simulate_weight(H, beta, sigma):
 
 
 @app.cell
-def _():
+def simulate_data():
     # Fixed seed, so the simulated data (and the fits below) are the same on
     # every run, and the cached fits can be reused
     np.random.seed(3)
@@ -246,7 +290,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(H, W):
+def simulated_data_plot(H, W):
     _fig, _axs = plt.subplots(1, 2, figsize=(8, 4))
     plt.sca(_axs[0])
     plt.hist(H, bins=25)
@@ -277,13 +321,13 @@ def _():
     ### Posterior Distribution
 
     $$
-    p(\alpha, \beta, \sigma) = \frac{p(W_i | \alpha, \beta, \sigma) p(\alpha, \beta, \sigma)}{Z}
+    p(\alpha, \beta, \sigma | W_i) = \frac{p(W_i | \alpha, \beta, \sigma) p(\alpha, \beta, \sigma)}{Z}
     $$
 
     - The only estimator in Bayesian data analysis
 
-    - $p(\alpha, \beta, \sigma)$ -- **Posterior**: Probability of a specific line (model)
-    - $p(W_i | \alpha, \beta, \sigma)$ -- **Likelihood**: The number of ways the generative proces (line) could have produced the data
+    - $p(\alpha, \beta, \sigma | W_i)$ -- **Posterior**: Probability of a specific line (model)
+    - $p(W_i | \alpha, \beta, \sigma)$ -- **Likelihood**: The number of ways the generative process (line) could have produced the data
         - aka the "Garden of Forking Data"
     - $p(\alpha, \beta, \sigma)$ -- **Prior**: the previous Posterior (sometimes with no data)
     - $Z$ -- **normalizing constant**
@@ -313,13 +357,13 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    For the following grid approximation simulation, we'll use a utility function `utils.simulate_2_parameter_bayesian_learning` for simulating general Bayeisan posterior update simulation. For the API, see `utils.py`
+    For the following grid approximation simulation, we'll use a utility function `utils.simulate_2_parameter_bayesian_learning` for simulating general Bayesian posterior updates. For the API, see `utils.py`
     """)
     return
 
 
 @app.cell
-def _():
+def grid_learning_docs():
     mo.plain_text(inspect.getdoc(utils.simulate_2_parameter_bayesian_learning))
     return
 
@@ -332,13 +376,11 @@ def _():
     return
 
 
-# Model function required for simulation
 @app.function
 def linear_model(x, intercept, slope):
     return intercept + slope * x
 
 
-# Posterior function required for simulation
 @app.function
 def linear_regression_posterior(x_obs, y_obs, intercept_grid, slope_grid, likelihood_prior_std = 1.0):
 
@@ -346,7 +388,7 @@ def linear_regression_posterior(x_obs, y_obs, intercept_grid, slope_grid, likeli
     if np.ndim(intercept_grid) > 1:
         intercept_grid = intercept_grid.ravel()
 
-    if np.ndim(slope_grid):
+    if np.ndim(slope_grid) > 1:
         slope_grid = slope_grid.ravel()
 
     log_prior_intercept = stats.norm(0, 1).logpdf(intercept_grid)
@@ -377,40 +419,85 @@ def _():
 
 
 @app.cell
-def _():
+def grid_data():
     # Generate standardized regression data for demo
     np.random.seed(123)
-    _RESOLUTION = 100
-    _N_DATA_POINTS = 64
+    GRID_RESOLUTION = 100
+    GRID_N_DATA_POINTS = 64
 
     # Ground truth parameters
-    _SLOPE = 0.5
-    _INTERCEPT = -1
+    GRID_SLOPE = 0.5
+    GRID_INTERCEPT = -1
 
-    _x = stats.norm().rvs(size=_N_DATA_POINTS)
-    _y = _INTERCEPT + _SLOPE * _x + stats.norm.rvs(size=_N_DATA_POINTS) * 0.25
+    grid_x = stats.norm().rvs(size=GRID_N_DATA_POINTS)
+    grid_y = GRID_INTERCEPT + GRID_SLOPE * grid_x + stats.norm.rvs(size=GRID_N_DATA_POINTS) * 0.25
 
-    _slope_grid = np.linspace(-2, 2, _RESOLUTION)
-    _intercept_grid = np.linspace(-2, 2, _RESOLUTION)
+    slope_grid = np.linspace(-2, 2, GRID_RESOLUTION)
+    intercept_grid = np.linspace(-2, 2, GRID_RESOLUTION)
+    return (
+        GRID_INTERCEPT,
+        GRID_N_DATA_POINTS,
+        GRID_SLOPE,
+        grid_x,
+        grid_y,
+        intercept_grid,
+        slope_grid,
+    )
 
-    # Vary the sample size to show how the posterior adapts to more and more data
-    _figs = []
-    for _n_samples in [0, 2, 4, 8, 16, 32, 64]:
-        # Run the simulation
-        utils.simulate_2_parameter_bayesian_learning(
-            x_obs=_x[:_n_samples],
-            y_obs=_y[:_n_samples],
-            param_a_grid=_intercept_grid,
-            param_b_grid=_slope_grid,
-            true_param_a=_INTERCEPT,
-            true_param_b=_SLOPE,
-            model_func=linear_model,
-            posterior_func=linear_regression_posterior,
-            param_labels=['intercept', 'slope'],
-            data_range_x=(-3, 3), data_range_y=(-3, 3)
-        )
-        _figs.append(plt.gcf())
-    mo.vstack(_figs)
+
+@app.cell(hide_code=True)
+def grid_controls(GRID_N_DATA_POINTS):
+    get_grid_n_samples, set_grid_n_samples = mo.state(0)
+
+
+    def _add_grid_points(n):
+        set_grid_n_samples(lambda current: min(current + n, GRID_N_DATA_POINTS))
+
+
+    grid_add_one_button = mo.ui.button(label="+1 point", on_click=lambda _: _add_grid_points(1))
+    grid_add_eight_button = mo.ui.button(label="+8 points", on_click=lambda _: _add_grid_points(8))
+    grid_reset_button = mo.ui.button(label="Reset", on_click=lambda _: set_grid_n_samples(0))
+    return (
+        get_grid_n_samples,
+        grid_add_eight_button,
+        grid_add_one_button,
+        grid_reset_button,
+    )
+
+
+@app.cell
+def grid_learning(
+    GRID_INTERCEPT,
+    GRID_N_DATA_POINTS,
+    GRID_SLOPE,
+    get_grid_n_samples,
+    grid_add_eight_button,
+    grid_add_one_button,
+    grid_reset_button,
+    grid_x,
+    grid_y,
+    intercept_grid,
+    slope_grid,
+):
+    # Add data points to show how the posterior adapts to more and more data
+    grid_n_samples = get_grid_n_samples()
+    utils.simulate_2_parameter_bayesian_learning(
+        x_obs=grid_x[:grid_n_samples],
+        y_obs=grid_y[:grid_n_samples],
+        param_a_grid=intercept_grid,
+        param_b_grid=slope_grid,
+        true_param_a=GRID_INTERCEPT,
+        true_param_b=GRID_SLOPE,
+        model_func=linear_model,
+        posterior_func=linear_regression_posterior,
+        param_labels=['intercept', 'slope'],
+        data_range_x=(-3, 3), data_range_y=(-3, 3)
+    )
+    mo.vstack([
+        mo.hstack([grid_add_one_button, grid_add_eight_button, grid_reset_button], justify="start"),
+        mo.md(f"**Data points used:** {grid_n_samples} / {GRID_N_DATA_POINTS}"),
+        plt.gcf(),
+    ])
     return
 
 
@@ -429,7 +516,7 @@ def _():
     ## (4) Validate the model
     ### Validate Assumptions with **Prior Predictive Distribution**
     - Priors should express scientific knowledge, _but softly_
-    - For example, when Height is 0, Weight shoudl be 0, right?
+    - For example, when Height is 0, Weight should be 0, right?
     - Weight should increase (on average) with height -- i.e. $\beta > 0$
     - Weight (kg) should be less than Height (cm)
     - variances should be positive
@@ -437,7 +524,7 @@ def _():
     $$
     \begin{align}
     \alpha &\sim \text{Normal}(0, 10) \\
-    \beta &\sim \text{Normal}(0, 1) \\
+    \beta &\sim \text{Uniform}(0, 1) \\
     \sigma &\sim \text{Uniform}(0, 10) \\
     \end{align}
     $$
@@ -452,7 +539,7 @@ def _():
 
 
 @app.cell
-def _():
+def prior_predictive():
     _n_simulations = 100
     _alphas = np.random.normal(0, 10, _n_simulations)
     _betas = np.random.uniform(0, 1, _n_simulations)  # beta should all be positive
@@ -471,17 +558,72 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    ### Try it: explore the priors
+    Change the priors and see which lines they allow before seeing any data. The dashed lines mark two things we know: weight can't be negative, and an adult's weight in kg is less than their height in cm.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def prior_controls():
+    prior_alpha_sd = mo.ui.slider(1, 50, value=10, label=r"$\alpha \sim \text{Normal}(0, s)$, $s$", show_value=True)
+    prior_beta_family = mo.ui.dropdown(["Uniform(0, b)", "Normal(0, b)"], value="Uniform(0, b)", label=r"$\beta$ prior")
+    prior_beta_scale = mo.ui.slider(0.1, 5, step=0.1, value=1, label="$b$", show_value=True)
+    prior_n_lines = mo.ui.slider(10, 300, step=10, value=100, label="Lines", show_value=True)
+    return prior_alpha_sd, prior_beta_family, prior_beta_scale, prior_n_lines
+
+
+@app.cell(hide_code=True)
+def prior_explorer(
+    prior_alpha_sd,
+    prior_beta_family,
+    prior_beta_scale,
+    prior_n_lines,
+):
+    _rng = np.random.default_rng(1)
+    _n_lines = prior_n_lines.value
+    _alphas = _rng.normal(0, prior_alpha_sd.value, _n_lines)
+    if prior_beta_family.value.startswith("Uniform"):
+        _betas = _rng.uniform(0, prior_beta_scale.value, _n_lines)
+    else:
+        _betas = _rng.normal(0, prior_beta_scale.value, _n_lines)
+
+    _heights = np.linspace(130, 170, 3)
+    _weights = _alphas[:, None] + _betas[:, None] * _heights
+    _implausible = ((_weights < 0) | (_weights > _heights)).any(axis=1).mean()
+
+    _fig, _ax = plt.subplots(figsize=(7, 4.5))
+    for _w in _weights:
+        plt.plot(_heights, _w, color='C0', alpha=0.5)
+    plt.axhline(0, color='k', linestyle='--')
+    plt.plot(_heights, _heights, color='k', linestyle='--')
+    plt.xlabel('height, H (cm)')
+    plt.ylabel('E[W | H] (kg)')
+    plt.ylim((-100, 250))
+    plt.title(f"{_implausible:.0%} of lines leave the plausible range")
+
+    mo.vstack([
+        mo.hstack([prior_alpha_sd, prior_n_lines], justify="start", gap=2),
+        mo.hstack([prior_beta_family, prior_beta_scale], justify="start", gap=2),
+        _fig,
+    ])
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     ## Simulation-based Validation & Calibration
     - Simulate data with varying parameters
     - Vary data-generating parameters (e.g. slope) that are analogous to the model; make sure the estimator tracks
     - Make sure that at large sample sizes, data-generating parameters can be recovered
-    - Same for confounds/unkowns
+    - Same for confounds/unknowns
     """)
     return
 
 
 @app.cell
-def _(H, W):
+def fit_by_sample_size(H, W):
     linear_regression_inferences = []
     linear_regression_models = []
     sample_sizes = [1, 2, 10, 20, 50, len(H)]
@@ -520,7 +662,7 @@ def _():
 
 
 @app.cell
-def _(MAX_HEIGHT, MIN_HEIGHT):
+def posterior_predictive_helper(MAX_HEIGHT, MIN_HEIGHT):
     MIN_WEIGHT = 55
     MAX_WEIGHT = 90
 
@@ -544,7 +686,7 @@ def _(MAX_HEIGHT, MIN_HEIGHT):
         # Formatting
         plt.xticks(np.arange(min_height, max_height + 1, 10))
         plt.xlim([min_height, max_height])
-        plt.xlabel('hieght, H (cm)')
+        plt.xlabel('height, H (cm)')
         plt.ylim([min_weight, max_weight])
         plt.yticks(np.arange(min_weight, max_weight, 10))
         plt.ylabel('weight, W (kg)')
@@ -553,7 +695,7 @@ def _(MAX_HEIGHT, MIN_HEIGHT):
 
 
 @app.cell(hide_code=True)
-def _(
+def sample_size_posteriors(
     H,
     W,
     linear_regression_inferences,
@@ -576,13 +718,88 @@ def _(
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    ### Try it: can the estimator recover the truth?
+    Pick the true slope $\beta$, the noise $\sigma$ and the sample size; the cells below simulate data from the generative model and fit the same PyMC model as above. The fit runs when you release a slider, and takes a few seconds the first time for each setting.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def recovery_controls():
+    recovery_beta = mo.ui.slider(0, 1, step=0.05, value=0.5, label=r"True $\beta$", show_value=True, debounce=True)
+    recovery_sigma = mo.ui.slider(1, 9, step=0.5, value=5, label=r"True $\sigma$", show_value=True, debounce=True)
+    recovery_n = mo.ui.slider(steps=[2, 5, 10, 20, 50, 100, 200, 500], value=20, label="Sample size", show_value=True, debounce=True)
+    mo.hstack([recovery_beta, recovery_sigma, recovery_n], justify="start", gap=2)
+    return recovery_beta, recovery_n, recovery_sigma
+
+
+@app.cell
+def recovery_fit(
+    MAX_HEIGHT,
+    MIN_HEIGHT,
+    recovery_beta,
+    recovery_n,
+    recovery_sigma,
+):
+    np.random.seed(4)
+    recovery_H = stats.uniform.rvs(MIN_HEIGHT, MAX_HEIGHT - MIN_HEIGHT, size=recovery_n.value)
+    recovery_W = simulate_weight(recovery_H, beta=recovery_beta.value, sigma=recovery_sigma.value)
+
+    with pm.Model() as recovery_model:
+        # Same priors as the model above
+        _sigma = pm.Uniform('sigma', 0, 10)
+        _alpha = pm.Normal('alpha', 0, 10)
+        _beta = pm.Uniform('beta', 0, 1)
+
+        _mu = _alpha + _beta * recovery_H
+        pm.Normal('W_obs', _mu, _sigma, observed=recovery_W)
+        recovery_inference = cached_sample(target_accept=0.99, progressbar=False)
+    return recovery_H, recovery_W, recovery_inference
+
+
+@app.cell(hide_code=True)
+def recovery_plot(
+    MAX_HEIGHT,
+    MIN_HEIGHT,
+    recovery_H,
+    recovery_W,
+    recovery_beta,
+    recovery_inference,
+    recovery_n,
+):
+    _fig, _axs = plt.subplots(1, 2, figsize=(11, 4))
+
+    plt.sca(_axs[0])
+    _xs = np.linspace(MIN_HEIGHT, MAX_HEIGHT, 30)
+    _posterior = recovery_inference.posterior.sel(chain=0)
+    for _a, _b in zip(_posterior['alpha'].values[:20], _posterior['beta'].values[:20]):
+        plt.plot(_xs, _a + _b * _xs, color='k', alpha=0.3)
+    plt.scatter(recovery_H, recovery_W, s=60, alpha=0.5, zorder=20)
+    plt.xlabel('height, H (cm)')
+    plt.ylabel('weight, W (kg)')
+    plt.title(f'N={recovery_n.value}')
+
+    plt.sca(_axs[1])
+    utils.plot_dist(recovery_inference.posterior['beta'], label='posterior')
+    plt.axvline(recovery_beta.value, color='k', linestyle='--', label=r'true $\beta$')
+    plt.xlim([0, 1])
+    plt.xlabel(r'$\beta$')
+    plt.legend()
+    plt.title(r'Posterior of $\beta$')
+    _fig
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     ## (5) Analyse the data
     """)
     return
 
 
 @app.cell
-def _(ADULT_HOWELL):
+def howell_fit(ADULT_HOWELL):
     with pm.Model() as howell_model:
         # Mutable data for posterior predictive / visualization
         _H = pm.Data('H', ADULT_HOWELL.height.values, dims='obs_ids')
@@ -602,13 +819,13 @@ def _(ADULT_HOWELL):
 
 
 @app.cell
-def _(howell_inference):
+def howell_summary(howell_inference):
     az.summary(howell_inference)
     return
 
 
 @app.cell(hide_code=True)
-def _(howell_inference):
+def howell_pairplot(howell_inference):
     _grid = pairplot(
         pd.DataFrame(
             {
@@ -642,7 +859,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(
+def howell_posterior_predictive(
     ADULT_HOWELL,
     howell_inference,
     howell_model,
@@ -665,6 +882,96 @@ def _(
 
 @app.cell(hide_code=True)
 def _():
+    mo.md(r"""
+    ## Bonus: vectorizing the grid posterior
+
+    `linear_regression_posterior` above loops over every point of the parameter grid. With a $100 	imes 100$ grid that is 10,000 iterations, and each one builds a new `stats.norm(...)` object, so a single posterior takes several seconds even when there is no data.
+
+    NumPy *broadcasting* evaluates the whole grid in one call. Give the grid parameters a column axis (`[:, None]`) and the data a row axis (`[None, :]`); the likelihood is then a matrix with **one row per grid point and one column per observation**. Summing each row gives the log-likelihood of each $(lpha, eta)$ pair, exactly what the loop computes one pair at a time.
+
+    After the timing comparison, the grid-learning demo runs again with this version. It is fast enough to follow a slider as you drag it.
+    """)
+    return
+
+
+@app.function
+def linear_regression_posterior_vectorized(x_obs, y_obs, intercept_grid, slope_grid, likelihood_prior_std=1.0):
+    intercept_grid = np.ravel(intercept_grid)
+    slope_grid = np.ravel(slope_grid)
+
+    log_prior_intercept = stats.norm(0, 1).logpdf(intercept_grid)
+    log_prior_slope = stats.norm(0, 1).logpdf(slope_grid)
+
+    # Shape (n_grid_points, n_observations): row i holds the predicted mean of every
+    # observation under the i-th (intercept, slope) pair
+    predicted_mean = intercept_grid[:, None] + slope_grid[:, None] * x_obs[None, :]
+    log_likelihood = stats.norm(predicted_mean, likelihood_prior_std).logpdf(y_obs[None, :]).sum(axis=1)
+
+    log_posterior = log_likelihood + log_prior_intercept + log_prior_slope
+    return np.exp(log_posterior - log_posterior.max())
+
+
+@app.cell
+def bonus_vectorized_comparison(grid_x, grid_y, intercept_grid, slope_grid):
+    # Same posterior, computed both ways on all 64 data points of the grid demo
+    _intercepts, _slopes = np.meshgrid(intercept_grid, slope_grid)
+
+    _start = time.perf_counter()
+    _loop_posterior = linear_regression_posterior(grid_x, grid_y, _intercepts, _slopes)
+    _loop_seconds = time.perf_counter() - _start
+
+    _start = time.perf_counter()
+    _vectorized_posterior = linear_regression_posterior_vectorized(grid_x, grid_y, _intercepts, _slopes)
+    _vectorized_seconds = time.perf_counter() - _start
+
+    mo.md(f"""
+    | Version | Time |
+    |---|---|
+    | loop | {_loop_seconds:.2f} s |
+    | vectorized | {_vectorized_seconds * 1000:.1f} ms |
+
+    Largest difference between the two posteriors: {np.abs(_loop_posterior - _vectorized_posterior).max():.1e}
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def bonus_grid_controls(GRID_N_DATA_POINTS):
+    bonus_grid_n_samples = mo.ui.slider(
+        0, GRID_N_DATA_POINTS, value=0, label="Number of data points", show_value=True, full_width=True
+    )
+    return (bonus_grid_n_samples,)
+
+
+@app.cell
+def bonus_grid_learning(
+    GRID_INTERCEPT,
+    GRID_SLOPE,
+    bonus_grid_n_samples,
+    grid_x,
+    grid_y,
+    intercept_grid,
+    slope_grid,
+):
+    # The grid-learning demo again, now with the vectorized posterior: drag the slider
+    utils.simulate_2_parameter_bayesian_learning(
+        x_obs=grid_x[:bonus_grid_n_samples.value],
+        y_obs=grid_y[:bonus_grid_n_samples.value],
+        param_a_grid=intercept_grid,
+        param_b_grid=slope_grid,
+        true_param_a=GRID_INTERCEPT,
+        true_param_b=GRID_SLOPE,
+        model_func=linear_model,
+        posterior_func=linear_regression_posterior_vectorized,
+        param_labels=['intercept', 'slope'],
+        data_range_x=(-3, 3), data_range_y=(-3, 3)
+    )
+    mo.vstack([bonus_grid_n_samples, plt.gcf()])
+    return
+
+
+@app.cell(hide_code=True)
+def environment():
     mo.accordion({"Environment": mo.plain_text(init_notebook.watermark_report())})
     return
 

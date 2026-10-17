@@ -75,26 +75,34 @@ Spots that need extra care:
 
 ## Phase 3: pass 2, widgets
 
-- [ ] For each lecture, propose a short widget list and get approval before building anything.
-- [ ] Fix typos in the markdown text.
-- [ ] Fix bugs carried over from the original notebooks (pass 1 keeps them as they are):
-  - **Lecture 04:** under "Simulate some more people", the sample with the 10 kg boost for males is never used. The direct-effect fit on synthetic data uses the earlier `simulated_people` instead, so its plots don't show the 10 kg gap the text describes. Fit on the new sample instead.
-  - **Lecture 06:** the bias-amplification cell sets an unused `beta_ZY = 0` and passes `beta_XY` from the earlier simulation (which happens to be 0). Set `beta_XY = 0` locally and drop `beta_ZY`.
-  - **Lecture 15:** `plot_dyadic_ties` is never called, and its first line overwrote its argument with an undefined `wealth_gifts_inference`. Pass 1 dropped that line so the cell runs without error. Use the function or delete it.
-  - **Lecture 16:** two cells read the `eta` and `sigma` left over from the second GP-prior loop (pass 1 keeps them as globals of that cell):
+Pass 2 goes one notebook at a time, in an order you choose, with a commit after each approved lecture. Each lecture gets the same steps:
+
+- [ ] Propose a short widget list and get approval before building anything.
+- [ ] Fix typos in the markdown text, and the bugs carried over from the original notebooks (listed below).
+- [ ] Give every non-markdown cell a descriptive name, so it can be referred to; widget cells use `<topic>_controls` and `<topic>_explorer` (or `_display` / `_plot`).
+- [ ] Build the approved widgets, validate (marimo check, headless run, tables), review, and commit.
+
+Progress:
+
+- [x] **02:** 4 widgets (garden explorer, estimator test, toss-the-globe updater, misclassification explorer); `simulate_noisy_globe_toss` now misclassifies both ways.
+- [x] **03:** 4 widgets (summed steps to Normal, grid learning with +1/+8 buttons, prior explorer, estimator recovery), and a bonus section on vectorizing the grid posterior (about 4 s down to about 40 ms) with a slider version of the grid demo.
+
+Bugs carried over from the original notebooks (pass 1 keeps them as they are):
+
+- **Lecture 04:** under "Simulate some more people", the sample with the 10 kg boost for males is never used. The direct-effect fit on synthetic data uses the earlier `simulated_people` instead, so its plots don't show the 10 kg gap the text describes. Fit on the new sample instead.
+- **Lecture 06:** the bias-amplification cell sets an unused `beta_ZY = 0` and passes `beta_XY` from the earlier simulation (which happens to be 0). Set `beta_XY = 0` locally and drop `beta_ZY`.
+- **Lecture 15:** `plot_dyadic_ties` is never called, and its first line overwrote its argument with an undefined `wealth_gifts_inference`. Pass 1 dropped that line so the cell runs without error. Use the function or delete it.
+- **Lecture 16:** two cells read the `eta` and `sigma` left over from the second GP-prior loop (pass 1 keeps them as globals of that cell):
     - The GP posterior plot's kernel title shows σ=0.5, but the kernel uses `sigma_kernel = 0.75`. Use `eta_kernel` and `sigma_kernel`.
     - `population_model` uses `eta` (= 1) as the Exponential rate of its priors instead of `ETA = 5.1`, which it defines and never uses. Use `ETA`; this changes the fit.
-  - **Lecture 16:** `distance_model` mixes poorly on `rho_squared`. The original was borderline (r̂ 1.01, 271 bulk ESS); the cached pass-1 run is worse (r̂ 1.03, 139 bulk ESS). Consider more tuning or draws, or a tighter prior.
-  - **Lecture 16:** the posterior covariance-matrix plots are titled "Prior Covariance / Intercept-only phylogenetic Model", including the one for the full model. Fix the titles.
-  - **Lecture 18:** `MeanBodyMassSocialGroupSize`, `PRIMATE_ID`, `PRIMATE` and the first `coords` are used only by the commented-out `gp.Marginal` models. Delete them, or restore the `gp.Marginal` versions.
-  - **Lecture 19:** the "Prior for $k$" plot evaluates the pdf on `ps` (0 to 1) instead of `ks` (0 to 5), so the curve doesn't match its x-axis. Use `ks`.
-  - **Lecture 19:** both ODE fits mix poorly. They give r̂ > 1.01 and under 100 ESS per chain, and the simulated-data fit has divergences (106 in the original, 43 in pass 1). Consider more tuning, or a gradient-based ODE solver so the ODE parameters can use NUTS instead of Slice.
-- [ ] Build the approved widgets, check and review them in batches as in pass 1, and commit.
+- **Lecture 16:** `distance_model` mixes poorly on `rho_squared`. The original was borderline (r̂ 1.01, 271 bulk ESS); the cached pass-1 run is worse (r̂ 1.03, 139 bulk ESS). Consider more tuning or draws, or a tighter prior.
+- **Lecture 16:** the posterior covariance-matrix plots are titled "Prior Covariance / Intercept-only phylogenetic Model", including the one for the full model. Fix the titles.
+- **Lecture 18:** `MeanBodyMassSocialGroupSize`, `PRIMATE_ID`, `PRIMATE` and the first `coords` are used only by the commented-out `gp.Marginal` models. Delete them, or restore the `gp.Marginal` versions.
+- **Lecture 19:** the "Prior for $k$" plot evaluates the pdf on `ps` (0 to 1) instead of `ks` (0 to 5), so the curve doesn't match its x-axis. Use `ks`.
+- **Lecture 19:** both ODE fits mix poorly. They give r̂ > 1.01 and under 100 ESS per chain, and the simulated-data fit has divergences (106 in the original, 43 in pass 1). Consider more tuning, or a gradient-based ODE solver so the ODE parameters can use NUTS instead of Slice.
 
 Candidate ideas, none of them approved yet:
 
-- **02:** a slider for the toss sequence and grid resolution, with a live posterior.
-- **03:** sliders for the prior parameters, with the prior predictive lines updating.
 - **07:** a slider for polynomial degree, showing in-sample vs out-of-sample error.
 - **08:** a step-by-step Metropolis run and an HMC step-size slider. An HMC path animation may need an anywidget, which needs approval.
 - **12:** a slider for σ (the spread between groups) that shows shrinkage.
