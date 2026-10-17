@@ -59,7 +59,7 @@ Each batch gets the automated checks, a short report of differences, approval, t
 - [x] 05 – 07
 - [x] 08 – 11
 - [x] 12 – 14
-- [ ] 15 – 17
+- [x] 15 – 17
 - [ ] 18 – 20
 
 Spots that need extra care:
@@ -80,6 +80,12 @@ Spots that need extra care:
 - [ ] Fix bugs carried over from the original notebooks (pass 1 keeps them as they are):
   - **Lecture 04:** under "Simulate some more people", the sample with the 10 kg boost for males is never used. The direct-effect fit on synthetic data uses the earlier `simulated_people` instead, so its plots don't show the 10 kg gap the text describes. Fit on the new sample instead.
   - **Lecture 06:** the bias-amplification cell sets an unused `beta_ZY = 0` and passes `beta_XY` from the earlier simulation (which happens to be 0). Set `beta_XY = 0` locally and drop `beta_ZY`.
+  - **Lecture 15:** `plot_dyadic_ties` is never called, and its first line overwrote its argument with an undefined `wealth_gifts_inference`. Pass 1 dropped that line so the cell runs without error. Use the function or delete it.
+  - **Lecture 16:** two cells read the `eta` and `sigma` left over from the second GP-prior loop (pass 1 keeps them as globals of that cell):
+    - The GP posterior plot's kernel title shows σ=0.5, but the kernel uses `sigma_kernel = 0.75`. Use `eta_kernel` and `sigma_kernel`.
+    - `population_model` uses `eta` (= 1) as the Exponential rate of its priors instead of `ETA = 5.1`, which it defines and never uses. Use `ETA`; this changes the fit.
+  - **Lecture 16:** `distance_model` mixes poorly on `rho_squared`. The original was borderline (r̂ 1.01, 271 bulk ESS); the cached pass-1 run is worse (r̂ 1.03, 139 bulk ESS). Consider more tuning or draws, or a tighter prior.
+  - **Lecture 16:** the posterior covariance-matrix plots are titled "Prior Covariance / Intercept-only phylogenetic Model", including the one for the full model. Fix the titles.
 - [ ] Build the approved widgets, check and review them in batches as in pass 1, and commit.
 
 Candidate ideas, none of them approved yet:
