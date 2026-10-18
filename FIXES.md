@@ -168,3 +168,32 @@ Notes:
 - The refit after the indexing fix barely changes the estimates (σ 0.52, τ 0.54, correlation of rural and urban means 0.75).
 - The shrinkage explorer holds σ fixed, so at σ ≈ 0.52 its estimates are close to, but not the same as, the MCMC fit, which also averages over σ.
 - The centered version of the district-urban model (behind a run button) samples badly on purpose: 771 divergences, an ESS of 7 for τ and r̂ 1.56, against none, 396 and 1.01 for the non-centered model.
+
+## Lecture 14 - Correlated Features
+
+Code:
+
+- The same district indexing bug as in Lecture 13: `pd.factorize` skipped district 54, so districts 55 to 61 used the parameters labeled 54 to 60, and the per-district plots were shifted from district 54 on. Both models now index by district number (`FERTILITY.district.values - 1`) and were refit.
+- The "95% IPR" bars on the outcome-scale plot used the 25% and 97.5% quantiles. They now use 2.5% and 97.5%.
+- `plot_2d_guassian_ci` (now `plot_2d_gaussian_ci`) used `norm.ppf(0.89)` = 1.23 as the radius of the "89%" ellipse, which holds only about 53% of a 2D Gaussian. The radius is now $\sqrt{\chi^2_2(0.89)}$ = 2.10. The axes of the α–β plots are wider to fit the larger ellipses.
+- `sample_LKJCorr_prior` drew the standard deviations from `stats.expon(.1)`, which shifts the location instead of setting the scale. It now uses `stats.expon(scale=1)`, the model's Exponential(1) prior.
+- Both models recorded `p_C`, an exact copy of `p_C_urban`. It is removed, and the uncorrelated model's `p_C_rural` and `p_C_urban` now have the `district` dimension.
+- The DAG of the previous model highlighted U → K and K → C, but the model has no K. It now highlights D → C and U → C.
+- Added seeds to the prior-predictive and LKJ draws.
+
+Text that didn't match the code:
+
+- The correlated model's equation gave $p_i = \alpha_{D[i]} + \beta_{D[i]} U_i$; it is now $\text{logit}(p_i)$.
+- The MVNormal prior used $=$ for a distribution, and the Cholesky transform used $\sim$ for a calculation.
+- The text on the outcome-scale plot read the spread of the district means as posterior uncertainty, and a ⚠️ note said the result was the opposite of the lecture. The text now says what the bars show: the correlated model pulls the urban means together (standard deviation across districts 0.071 against 0.090), while the posterior uncertainty of each district barely changes (0.121 against 0.123). The note is removed.
+- The correlation described in "Including feature correlations" is between rural use $\alpha_j$ and the urban difference $\beta_j$.
+- "Demonstrate sampling random correlation matrix" now reads "sampling correlated data", which is what the cell does.
+- The non-centered funnel has no divergences at all three values of $\sigma_v$ (against 4, 108 and 405 for the centered funnel); the text said "consistently reduced".
+- The links to Lecture 13 pointed to the old `.ipynb` file.
+
+Notes:
+
+- The refit barely changes the estimates: the correlation between $\alpha$ and $\beta$ is −0.54 (−0.55 before), with standard deviations 0.55 and 0.74.
+- The correlated pooling demo holds $\bar\alpha$, $\bar\beta$, $\sigma$ and $\tau$ at the correlated model's posterior means and computes one district's posterior exactly on a grid, so its estimates are close to, but not the same as, the MCMC fit.
+- The funnel explorer's fits use `float` values of $\sigma_v$, so $\sigma_v = 1.0$ is a separate fit from the static cell's integer `1` (76 against 108 centered divergences). The funnel models are sampled without a seed.
+- The static LKJ ellipse plot calls `pm.draw` once per ellipse (80 calls), which takes about 30 s when the notebook opens. The LKJ explorer draws all its samples in one call (about 1 s); a comment in `sample_LKJCorr_prior` shows how the static plot could do the same.
