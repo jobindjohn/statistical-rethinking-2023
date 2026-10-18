@@ -112,6 +112,43 @@ Notes:
 - The collider mistake was in the notebook's own notes, not in McElreath's lecture.
 - The widgets use a vectorized least-squares helper (`ols_first_slopes`) so they update quickly; the static simulation cells keep their original `smf.ols` code.
 
+## Lecture 09 - Modeling Events
+
+Code:
+
+- The cat adoption model had its censoring reversed. It coded adoption with `pd.factorize`, whose order depends on the first row of the data (a transfer), so the 11,351 adopted cats were treated as censored and every other cat as adopted. Adoption is now read directly from `out_event == "Adoption"`, and adopted cats get an infinite censoring bound. The refit gives an average wait of 57.6 days for black cats and 48.4 for other cats, against 54.8 and 50.6 before. These match the exact estimate (total days ÷ number of adoptions).
+- The post-stratification multiplied each department's log-odds by its share of applications and pooled the six results as if they were draws, which is neither a weighted average nor on the probability scale. It now takes the male − female contrast in admission probability per department, and draws each posterior sample's department in proportion to its applications. The weighted average is marked (−0.036 ± 0.018).
+- The Gamma plot used `loc=10`, which shifted both curves 10 days to the right, and its label called the scale β. It now uses shape 10 with scales 2 and 5.
+- The prior-predictive plot of α and β showed ±1 sd, so most sampled points fell outside the frame. It now shows ±3 sd.
+- `logistic_regression_posterior` had an unused `likelihood_prior_std` argument, and `if np.ndim(beta_grid):` was missing `> 1`.
+- Removed a cell that only built an unused `partial(gaussian_2d_pdf)` (its plot call was commented out).
+- `_log_adoption_rate` held the rate, not its log; it is now `_adoption_rate`.
+- Axis labels:
+  - The logistic curve was labeled $\frac{1}{e^{-(\alpha + \beta X)}}$, missing the $1 +$.
+  - The CDF and CCDF were labeled without λ.
+  - The prior-predictive curves were labeled invlogit(x) instead of invlogit(α + βx).
+  - The post-stratification title was missing "Effect".
+- Added seeds to the logit prior plots and the prior-predictive draws.
+
+Text that didn't match the code:
+
+- The dataset has 4526 applications, not 4562.
+- The logit was given as $\frac{p}{1-p}$, missing the log.
+- The simulation text said gender 0 has a lower overall *rejection* rate; it is the acceptance rate.
+- The cat model's equations used $\log \mu_i = \alpha$, while the code puts the Exponential prior on $\mu_i = \alpha$ directly. They now match the code, with a note on McElreath's log link. The censored line read $D_i | A_i = 1$ twice.
+- The direct-effect α matrix used commas instead of `&`, so it rendered as one column.
+- The direct-effect model's docstring said "total effect".
+- γ was called the Exponential prior's mean; it is the rate, and the prior mean is 1/γ = 50 days.
+- The text after the post-stratification said the unweighted contrast gives "similar results". It now explains the equal-weight comparison (average −0.029 against −0.036) and why the population matters.
+- There are 22,356 cats, not "20k".
+- Typos: ocurring, Bernouilli, Logisitic, Bayeisan, continous, unqual, deparment, estiamte, Deptartment, historgram, probablity, kittes, Estimands(s).
+
+Notes:
+
+- The conclusion about black cats holds, and the gap between black and other cats grows from about 4 days to 9.
+- The censoring explorer computes the posterior of μ exactly on a grid, which matches the MCMC fit. Its Kaplan-Meier curves follow the censored model and sit above the model that drops the non-adopted cats.
+- The logistic updating explorer uses a vectorized grid posterior on its own simulated data; the 8-figure demo keeps the original loop.
+
 ## Lecture 12 - Multilevel Models
 
 Code:

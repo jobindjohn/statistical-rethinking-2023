@@ -36,7 +36,7 @@ def _():
     # UC Berkeley Admissions
 
     ## Dataset
-    - 4562 Graduate student applications
+    - 4526 Graduate student applications
     - Stratified by
       - Department
       - Gender
@@ -47,7 +47,7 @@ def _():
 
 
 @app.cell
-def _():
+def admissions_data():
     ADMISSIONS = utils.load_data("UCBadmit")
     ADMISSIONS
     return (ADMISSIONS,)
@@ -59,9 +59,9 @@ def _():
     ## Modeling Events
     - **Events**: discrete, unordered outcomes
     - Observations are counts/aggregates
-    - Unknowns are probabilities $p$ of event ocurring, or odds of those probabilities $\frac{p}{1-p}$
+    - Unknowns are probabilities $p$ of an event occurring, or the odds of those probabilities $\frac{p}{1-p}$
     - All things we stratify by interact -- generally never independent in real life
-    - Often deal with the Log Odds of $p = \log \left (\frac{p}{1-p} \right)$
+    - We often work with the log-odds of $p$: $\log \left(\frac{p}{1-p} \right)$
     """)
     return
 
@@ -71,9 +71,9 @@ def _():
     mo.md(r"""
     ## Admissions: Drawing the owl 🦉
 
-    1. Estimands(s)
-    2. Scientific Models(s)
-    3. Statistical Models(s)
+    1. Estimand(s)
+    2. Scientific Model(s)
+    3. Statistical Model(s)
     4. Analysis
     """)
     return
@@ -92,7 +92,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def direct_discrimination_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("G", "D"),
@@ -120,7 +120,7 @@ def _():
     - Usually the type we're interested in identifying if it exists
     - Requires strong causal assumptions
 
-    Here, deparment, D is a mediator -- this is a common structure in social sciences, where categorical status (e.g. gender) effects some mediating context (e.g. occupation), both of which affect a target outcome (wage). Examples
+    Here, department, D is a mediator -- this is a common structure in social sciences, where categorical status (e.g. gender) affects some mediating context (e.g. occupation), both of which affect a target outcome (wage). Examples
     - wage discrimination
     - hiring
     - scientific awards
@@ -137,7 +137,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def indirect_discrimination_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("G", "D"),
@@ -178,7 +178,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def total_discrimination_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("G", "D"),
@@ -230,7 +230,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def unobserved_confound_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("G", "D"),
@@ -269,7 +269,7 @@ def _():
 
 
 @app.cell
-def _():
+def admissions_simulation():
     np.random.seed(123)
     _n_samples = 1000
 
@@ -339,14 +339,88 @@ def _():
     - Gender 1 tends to apply to department 1
 
     #### Unbiased scenario:
-    - due to lower acceptance rates in dept 0 and tendency of gender 0 to apply to dept 0, gender 0 has a lower overall rejection rate compared to gender 1
+    - due to lower acceptance rates in dept 0 and tendency of gender 0 to apply to dept 0, gender 0 has a lower overall acceptance rate compared to gender 1
     - due to higher acceptance rates in dept 1 and tendency of gender 1 to apply to dept 1, gender 1 has a higher overall acceptance rate compared to gender 0
-    - even in the case of no (direct) gender discrimination, **there is still indirect discrimination based on tendency of genders to apply to different departments, and the unqual likelihood that each department accepts students.**
+    - even in the case of no (direct) gender discrimination, **there is still indirect discrimination based on tendency of genders to apply to different departments, and the unequal likelihood that each department accepts students.**
 
     #### Biased scenario
     - overall acceptance rates are lower (due to baseline reduction in gender 0 acceptance rates across both departments)
     - in the scenario where there is actual department bias, **we see a similar overall _pattern_ of discrimination as the unbiased case due to the indirect effect.**
     """)
+    return
+
+
+@app.cell(hide_code=True)
+def admissions_sim_controls():
+    admissions_sim = mo.ui.dictionary({
+        "p_dept1_g0": mo.ui.slider(0, 1, step=0.05, value=0.3, label="P(dept 1 | gender 0)", show_value=True),
+        "p_dept1_g1": mo.ui.slider(0, 1, step=0.05, value=0.8, label="P(dept 1 | gender 1)", show_value=True),
+        "rate_d0_g0": mo.ui.slider(0, 1, step=0.05, value=0.1, label="dept 0, gender 0", show_value=True),
+        "rate_d0_g1": mo.ui.slider(0, 1, step=0.05, value=0.1, label="dept 0, gender 1", show_value=True),
+        "rate_d1_g0": mo.ui.slider(0, 1, step=0.05, value=0.3, label="dept 1, gender 0", show_value=True),
+        "rate_d1_g1": mo.ui.slider(0, 1, step=0.05, value=0.3, label="dept 1, gender 1", show_value=True),
+    })
+    mo.vstack([
+        mo.md(r"""
+    #### Explore: direct and indirect discrimination
+    The overall acceptance rate of a gender is each department's acceptance rate, weighted by how often that gender applies there. So the gap between the genders splits into a **direct** part (different acceptance rates within the same department) and an **indirect** part (applying to different departments). This is computed exactly, without simulating applicants.
+
+    The sliders start at the unbiased scenario. For the biased scenario, set gender 0's acceptance rates to 0.05 (dept 0) and 0.2 (dept 1).
+    """),
+        mo.hstack([
+            mo.vstack([mo.md("**Where each gender applies**"), admissions_sim["p_dept1_g0"], admissions_sim["p_dept1_g1"]]),
+            mo.vstack([
+                mo.md("**Acceptance rates**"),
+                admissions_sim["rate_d0_g0"], admissions_sim["rate_d0_g1"],
+                admissions_sim["rate_d1_g0"], admissions_sim["rate_d1_g1"],
+            ]),
+        ], justify="start", gap=4),
+    ])
+    return (admissions_sim,)
+
+
+@app.cell(hide_code=True)
+def admissions_sim_explorer(admissions_sim):
+    _v = admissions_sim.value
+    # Department x Gender, like the acceptance rate matrices above
+    _p_dept = np.array([[1 - _v["p_dept1_g0"], 1 - _v["p_dept1_g1"]], [_v["p_dept1_g0"], _v["p_dept1_g1"]]])
+    _rates = np.array([[_v["rate_d0_g0"], _v["rate_d0_g1"]], [_v["rate_d1_g0"], _v["rate_d1_g1"]]])
+
+    # Overall acceptance rate of each gender: department rates weighted by where that gender applies
+    _contributions = _p_dept * _rates
+    _overall = _contributions.sum(axis=0)
+
+    # Split the gap (gender 1 - gender 0) into a direct and an indirect part
+    _total = _overall[1] - _overall[0]
+    _direct = (_p_dept[:, 0] * (_rates[:, 1] - _rates[:, 0])).sum()  # same departments, different rates
+    _indirect = ((_p_dept[:, 1] - _p_dept[:, 0]) * _rates[:, 1]).sum()  # different departments
+
+    _fig, (_ax_rates, _ax_gap) = plt.subplots(1, 2, figsize=(11, 4))
+    _bottom = np.zeros(2)
+    for _dept in range(2):
+        _ax_rates.bar([0, 1], _contributions[_dept], bottom=_bottom, width=.5, color=f"C{_dept}", label=f"from dept {_dept}")
+        _bottom += _contributions[_dept]
+    for _g in range(2):
+        _ax_rates.text(_g, _overall[_g], f"{_overall[_g]:.3f}", ha="center", va="bottom")
+    _ax_rates.set_xticks([0, 1], ["gender 0", "gender 1"])
+    _ax_rates.set_xlim([-.6, 1.6])
+    _ax_rates.set_ylim([0, min(1.05, max(.1, 1.25 * _overall.max()))])
+    _ax_rates.set_ylabel("overall acceptance rate")
+    _ax_rates.set_title("Overall acceptance rate by gender")
+    _ax_rates.legend(loc="upper left")
+
+    _gaps = [_total, _direct, _indirect]
+    _ax_gap.barh([2, 1, 0], _gaps, color=["gray", "C0", "C1"], height=.5)
+    for _y, _gap in zip([2, 1, 0], _gaps):
+        _ax_gap.text(_gap, _y, f" {_gap:+.3f} ", va="center", ha="left" if _gap >= 0 else "right")
+    _ax_gap.axvline(0, color="k", linewidth=1)
+    _lim = max(.05, 1.4 * np.abs(_gaps).max())
+    _ax_gap.set_xlim([-_lim, _lim])
+    _ax_gap.set_yticks([2, 1, 0], ["total", "direct\n(same departments)", "indirect\n(different departments)"])
+    _ax_gap.set_xlabel("acceptance rate gap, gender 1 − gender 0")
+    _ax_gap.set_title("total = direct + indirect")
+    _fig.tight_layout()
+    _fig
     return
 
 
@@ -363,7 +437,7 @@ def _():
     mo.md(r"""
     ## Modeling Events
     - **We observe** counts of events
-    - **We estimate** probabilities -- or, rather, the log-odds of events ocurring
+    - **We estimate** probabilities -- or, rather, the log-odds of events occurring
 
     ### Linear Models
     Expected value is linear (additive) combination of parameters
@@ -388,9 +462,8 @@ def _():
     f(\mathbb{E}[\theta]) = \alpha + \beta_X X_i + ...
     $$
 
-    - Generally, this function $f()$, called the **link function**, will have a specific form **that is associated with the likelihood distribution**.
-    - the link function will have an **inverse link function** $ f^{-1}(X_i, \theta)$ such that
-    - to reiterate **link functions are matched to distributions**
+    - Generally, this function $f()$, called the **link function**, will have a specific form **that is associated with the likelihood distribution**. To reiterate, **link functions are matched to distributions**
+    - the link function has an **inverse link function** $f^{-1}(X_i, \theta)$ such that
 
     $$
     \mathbb{E}[\theta] = f^{-1}(\alpha + \beta_X X_i + ...)
@@ -402,7 +475,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def linear_vs_logistic_plot():
     _fig, _axs = plt.subplots(1, 2, figsize=(8, 4))
     _xs = np.linspace(-3, 3, 100)
     plt.sca(_axs[0])
@@ -415,8 +488,8 @@ def _():
     plt.xlim([-3, 3])
     plt.ylim([-.5, 1.5])
     plt.xlabel('x')
-    plt.ylabel('$I(\\alpha + \\beta X$)')
-    plt.title("Linear Model\n(continous outcomes)")
+    plt.ylabel('$I(\\alpha + \\beta X)$')
+    plt.title("Linear Model\n(continuous outcomes)")
 
     plt.sca(_axs[1])
     plt.plot(_xs, utils.invlogit(_alpha + _beta * _xs))
@@ -425,7 +498,7 @@ def _():
     plt.xlim([-3, 3])
     plt.ylim([-.5, 1.5])
     plt.xlabel('x')
-    plt.ylabel('$\\frac{1}{e^{-(\\alpha + \\beta X)}}$')
+    plt.ylabel('$\\frac{1}{1 + e^{-(\\alpha + \\beta X)}}$')
     plt.title("Logistic Model\n(binary outcomes)")
     _fig
     return
@@ -434,12 +507,12 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## Logit Link Function and Logisitic Inverse function
+    ## Logit Link Function and Logistic Inverse function
     ### Binary outcomes
 
-    - **Logistic regression** used to model the probability of an event ocurring
-    - Likelihood function is the Bernouilli
-    - Associated link function is the **log-odds, or logit**: $f(p) = \frac{p}{1-p}$
+    - **Logistic regression** used to model the probability of an event occurring
+    - Likelihood function is the Bernoulli
+    - Associated link function is the **log-odds, or logit**: $f(p) = \log \left(\frac{p}{1-p}\right)$
 
     $$
     \begin{align*}
@@ -476,7 +549,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def logistic_curve_plot():
     _fig, _ax = plt.subplots()
     _log_odds = np.linspace(-4, 4, 100)
     utils.plot_line(_log_odds, utils.invlogit(_log_odds), label=None)
@@ -492,13 +565,13 @@ def _():
 def _():
     mo.md(r"""
     ### Bayesian Updating for Logistic Regression
-    For the following simulation, we'll use a custom utility function `utils.simulate_2_parameter_bayesian_learning` for simulating general Bayeisan posterior update simulation. Here's the API for that function (for more details see `utils.py`)
+    For the following simulation, we'll use a custom utility function `utils.simulate_2_parameter_bayesian_learning` for simulating general Bayesian posterior update simulation. Here's the API for that function (for more details see `utils.py`)
     """)
     return
 
 
 @app.cell
-def _():
+def bayesian_learning_docs():
     mo.plain_text(inspect.getdoc(utils.simulate_2_parameter_bayesian_learning))
     return
 
@@ -509,13 +582,13 @@ def logistic_model(x, alpha, beta):
 
 
 @app.function
-def logistic_regression_posterior(x_obs, y_obs, alpha_grid, beta_grid, likelihood_prior_std = .01):
+def logistic_regression_posterior(x_obs, y_obs, alpha_grid, beta_grid):
 
     # Convert params to 1-d arrays
     if np.ndim(alpha_grid) > 1:
         alpha_grid = alpha_grid.ravel()
 
-    if np.ndim(beta_grid):
+    if np.ndim(beta_grid) > 1:
         beta_grid = beta_grid.ravel()
 
     log_prior_intercept = stats.norm(0, 1).logpdf(alpha_grid)
@@ -537,7 +610,7 @@ def logistic_regression_posterior(x_obs, y_obs, alpha_grid, beta_grid, likelihoo
 
 
 @app.cell
-def _():
+def logistic_updating_demo():
     # Generate data for demo
     np.random.seed(123)
     _RESOLUTION = 100
@@ -576,6 +649,66 @@ def _():
 
 
 @app.cell(hide_code=True)
+def logistic_updating_controls():
+    logistic_updating_n = mo.ui.slider(0, 128, step=1, value=8, label="number of observations", show_value=True, full_width=True)
+    mo.vstack([
+        mo.md(r"""
+    #### Explore: updating one observation at a time
+    Same model and priors as above, on a new simulated dataset with the same true parameters ($\alpha = -1$, $\beta = 2$). Here the grid posterior is vectorized (the log-likelihood of all observations at all grid points in one array operation), so it updates instantly. The demo above loops over the grid points in Python.
+    """),
+        logistic_updating_n,
+    ])
+    return (logistic_updating_n,)
+
+
+@app.cell(hide_code=True)
+def logistic_updating_explorer(logistic_updating_n):
+    _ALPHA, _BETA = -1, 2
+    _rng = np.random.default_rng(123)
+    _x_all = _rng.normal(size=128)
+    _y_all = _rng.binomial(1, utils.invlogit(_ALPHA + _BETA * _x_all))
+    _n = logistic_updating_n.value
+    _x, _y = _x_all[:_n], _y_all[:_n]
+
+    # Vectorized grid posterior: (beta x alpha x observation) log-odds in one array
+    _grid = np.linspace(-3, 3, 150)
+    _alphas, _betas = np.meshgrid(_grid, _grid)
+    _logit_p = _alphas[..., None] + _betas[..., None] * _x
+    _log_likelihood = (_y * _logit_p - np.logaddexp(0, _logit_p)).sum(axis=-1)  # Bernoulli log-pmf on the logit scale
+    _log_posterior = _log_likelihood + stats.norm(0, 1).logpdf(_alphas) + stats.norm(0, 1).logpdf(_betas)
+    _posterior = np.exp(_log_posterior - _log_posterior.max())
+
+    # Sample parameters from the grid posterior
+    _idx = np.random.default_rng(0).choice(_posterior.size, size=20, p=(_posterior / _posterior.sum()).ravel())
+    _alpha_samples, _beta_samples = _alphas.ravel()[_idx], _betas.ravel()[_idx]
+
+    _fig, (_ax_post, _ax_data) = plt.subplots(1, 2, figsize=(11, 4.5))
+    _ax_post.contour(_alphas, _betas, _posterior, cmap="gray_r")
+    _ax_post.scatter(_alpha_samples, _beta_samples, color="C0", s=12, alpha=.6, label="posterior samples")
+    _ax_post.scatter([_ALPHA], [_BETA], color="C1", marker="x", s=80, label="true parameters")
+    _ax_post.set_aspect("equal")
+    _ax_post.set_xlabel("$\\alpha$")
+    _ax_post.set_ylabel("$\\beta$")
+    _ax_post.set_title(f"posterior after {_n} observations")
+    _ax_post.legend(loc="lower left", fontsize=8)
+
+    _xs = np.linspace(-2, 2, 100)
+    for _a, _b in zip(_alpha_samples, _beta_samples):
+        _ax_data.plot(_xs, utils.invlogit(_a + _b * _xs), color="C0", alpha=.25)
+    _ax_data.plot(_xs, utils.invlogit(_ALPHA + _BETA * _xs), color="C1", linestyle="--", label="true model")
+    _ax_data.scatter(_x, _y, color="k", s=20, zorder=3, label="observations")
+    _ax_data.set_xlim([-2, 2])
+    _ax_data.set_ylim([-.05, 1.05])
+    _ax_data.set_xlabel("x")
+    _ax_data.set_ylabel("p(y = 1)")
+    _ax_data.set_title("20 logistic curves sampled from the posterior")
+    _ax_data.legend(loc="upper left", fontsize=8)
+    _fig.tight_layout()
+    _fig
+    return
+
+
+@app.cell(hide_code=True)
 def _():
     mo.md(r"""
     ## Priors for logistic regression
@@ -589,13 +722,14 @@ def _():
 
 
 @app.cell
-def _():
+def logit_prior_plots():
     _n_samples = 10000
+    _rng = np.random.default_rng(12)
     _fig, _axs = plt.subplots(3, 2, figsize=(8, 8))
     for _ii, _std in enumerate([10, 1.5, 1]):
 
         # Alpha prior distribution
-        _alphas = stats.norm(0, _std).rvs(_n_samples)
+        _alphas = stats.norm(0, _std).rvs(_n_samples, random_state=_rng)
         plt.sca(_axs[_ii][0])
         utils.plot_dist(_alphas, color='C1')
         plt.xlim([-30, 30])
@@ -629,21 +763,12 @@ def gaussian_2d_pdf(xs, ys, mean=(0, 0), covariance=np.eye(2)):
     return np.array(stats.multivariate_normal(mean, covariance).pdf(np.vstack([xs, ys]).T))
 
 
-@app.cell
-def _():
-    _pdf = partial(gaussian_2d_pdf)
-
-    _xs =  _ys = np.linspace(-3, 3, 100)
-    # utils.plot_2d_function(xs, ys, pdf, cmap='gray_r')
-    return
-
-
 @app.function
-def plot_logistic_prior_predictive(n_samples = 20, prior_std=.5):
+def plot_logistic_prior_predictive(n_samples = 20, prior_std=.5, random_seed=None):
 
     _, axs = plt.subplots(1, 2, figsize=(10, 4))
     plt.sca(axs[0])
-    min_x, max_x = -prior_std, prior_std
+    min_x, max_x = -3 * prior_std, 3 * prior_std
     xs = np.linspace(min_x, max_x, 100)
     ys = xs
 
@@ -655,8 +780,9 @@ def plot_logistic_prior_predictive(n_samples = 20, prior_std=.5):
     plt.ylim([min_x, max_x])
 
     # Sample some parameters from prior
-    βs = stats.norm.rvs(0, prior_std, size=n_samples)
-    αs = stats.norm.rvs(0, prior_std, size=n_samples)
+    rng = np.random.default_rng(random_seed)
+    βs = stats.norm.rvs(0, prior_std, size=n_samples, random_state=rng)
+    αs = stats.norm.rvs(0, prior_std, size=n_samples, random_state=rng)
 
     for b, a in zip(βs, αs):
         plt.scatter(a, b)
@@ -675,31 +801,85 @@ def plot_logistic_prior_predictive(n_samples = 20, prior_std=.5):
         plt.plot(xs, p)
 
     plt.xlabel('x')
-    plt.ylabel('p = invlogit(x)')
+    plt.ylabel('p = invlogit($\\alpha + \\beta x$)')
     plt.xlim([-3, 3])
     plt.ylim([-.05, 1.05])
     plt.axhline(0.5, linestyle='--', color='k')
-    plt.title(f"Resulting Logistic Models")
+    plt.title("Resulting Logistic Models")
 
 
 @app.cell
-def _():
-    plot_logistic_prior_predictive(prior_std=0.5)
+def prior_predictive_std_05():
+    plot_logistic_prior_predictive(prior_std=0.5, random_seed=1)
     plt.gcf()
     return
 
 
 @app.cell
-def _():
-    plot_logistic_prior_predictive(prior_std=1.)
+def prior_predictive_std_1():
+    plot_logistic_prior_predictive(prior_std=1., random_seed=1)
     plt.gcf()
     return
 
 
 @app.cell
-def _():
-    plot_logistic_prior_predictive(prior_std=10)
+def prior_predictive_std_10():
+    plot_logistic_prior_predictive(prior_std=10, random_seed=1)
     plt.gcf()
+    return
+
+
+@app.cell(hide_code=True)
+def logit_prior_controls():
+    logit_prior_sigma = mo.ui.slider(
+        steps=[0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10],
+        value=1.5,
+        label="prior std, σ",
+        show_value=True,
+        full_width=True,
+    )
+    mo.vstack([
+        mo.md(r"""
+    #### Explore: how wide should a log-odds prior be?
+    Set the prior $\alpha, \beta \sim \mathcal{N}(0, \sigma)$ and see what it implies on the probability scale. Beyond $|\text{logit}(p)| > 4.6$, i.e. $p < 0.01$ or $p > 0.99$, the logit squashes everything against 0 and 1, so a wide prior on the log-odds scale is a strong prior for extreme probabilities.
+    """),
+        logit_prior_sigma,
+    ])
+    return (logit_prior_sigma,)
+
+
+@app.cell(hide_code=True)
+def logit_prior_explorer(logit_prior_sigma):
+    _sigma = logit_prior_sigma.value
+    _rng = np.random.default_rng(12)
+    _ps = utils.invlogit(_rng.normal(0, _sigma, size=20000))
+    _logit_99 = np.log(99)
+    _extreme = 2 * stats.norm(0, _sigma).sf(_logit_99)
+
+    _fig, (_ax_alpha, _ax_p, _ax_curves) = plt.subplots(1, 3, figsize=(14, 4))
+    _xs = np.linspace(-25, 25, 1001)
+    _ax_alpha.plot(_xs, stats.norm(0, _sigma).pdf(_xs), color="C1")
+    _ax_alpha.axvspan(-_logit_99, _logit_99, color="gray", alpha=.15, label="0.01 < p < 0.99")
+    _ax_alpha.set_xlabel("$\\alpha$ (log-odds)")
+    _ax_alpha.set_ylabel("density")
+    _ax_alpha.set_title(f"$\\alpha \\sim \\mathcal{{N}}(0, {_sigma:g})$")
+    _ax_alpha.legend(loc="upper left", fontsize=8)
+
+    _ax_p.hist(_ps, bins=np.linspace(0, 1, 51), density=True, color="C0", alpha=.7)
+    _ax_p.set_xlim([0, 1])
+    _ax_p.set_xlabel("p(event)")
+    _ax_p.set_title(f"implied prior on p\n{_extreme:.0%} of draws have p < 0.01 or p > 0.99")
+
+    _xs = np.linspace(-3, 3, 100)
+    for _a, _b in zip(_rng.normal(0, _sigma, size=30), _rng.normal(0, _sigma, size=30)):
+        _ax_curves.plot(_xs, utils.invlogit(_a + _b * _xs), color="C0", alpha=.4)
+    _ax_curves.axhline(0.5, linestyle="--", color="k")
+    _ax_curves.set_ylim([-.05, 1.05])
+    _ax_curves.set_xlabel("x")
+    _ax_curves.set_ylabel("p = invlogit($\\alpha + \\beta x$)")
+    _ax_curves.set_title("30 logistic curves from the prior")
+    _fig.tight_layout()
+    _fig
     return
 
 
@@ -721,7 +901,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def total_effect_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("G", "D"),
@@ -768,7 +948,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def direct_effect_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("G", "D"),
@@ -796,7 +976,7 @@ def _():
     \begin{align*}
     A_i &\sim \text{Bernoulli}(p_i) \\
     \text{logit}(p_i) &= \alpha[G_i, D_i] \\
-    \alpha &= \left[{\begin{array}{cc} \alpha_{0,0}, \alpha_{0,1} \\ \alpha_{1,0}, \alpha_{1,1} \end{array}}\right] \\
+    \alpha &= \left[{\begin{array}{cc} \alpha_{0,0} & \alpha_{0,1} \\ \alpha_{1,0} & \alpha_{1,1} \end{array}}\right] \\
     \alpha_{j,k} &\sim \text{Normal}(0, 1)
     \end{align*}
     $$
@@ -885,7 +1065,7 @@ def plot_admissions_model_posterior(inference, figsize=(6, 2)):
     # Plot alphas
     utils.plot_forest(inference, var_names=['alpha'], hdi_prob=.89, ax=ax)
 
-    # Plot inver-linked acceptance probabilities
+    # Plot inverse-linked acceptance probabilities
     fig_p_accept, ax = plt.subplots(figsize=figsize)
     utils.plot_forest(inference, var_names=['p_accept'], hdi_prob=.89, ax=ax)
 
@@ -901,7 +1081,7 @@ def _():
 
 
 @app.cell
-def _(simulate_admissions_data):
+def simulated_biased_data(simulate_admissions_data):
     # Fixed seed, so the simulated data (and the fits below) are the same on
     # every run, and the cached fits can be reused
     np.random.seed(1)
@@ -913,13 +1093,13 @@ def _(simulate_admissions_data):
 
 
 @app.cell
-def _(SIMULATED_BIASED_ADMISSIONS):
+def fit_total_simulated_biased(SIMULATED_BIASED_ADMISSIONS):
     total_effect_model_simulated_biased, total_effect_inference_simulated_biased = fit_total_effect_model_admissions(SIMULATED_BIASED_ADMISSIONS)
     return (total_effect_inference_simulated_biased,)
 
 
 @app.cell
-def _(total_effect_inference_simulated_biased):
+def plot_total_simulated_biased(total_effect_inference_simulated_biased):
     plot_admissions_model_posterior(total_effect_inference_simulated_biased, (6, 1.5))
     return
 
@@ -933,7 +1113,7 @@ def _():
 
 
 @app.cell
-def _(simulate_admissions_data):
+def simulated_unbiased_data(simulate_admissions_data):
     # Fixed seed, so the simulated data (and the fits below) are the same on
     # every run, and the cached fits can be reused
     np.random.seed(2)
@@ -945,13 +1125,13 @@ def _(simulate_admissions_data):
 
 
 @app.cell
-def _(SIMULATED_UNBIASED_ADMISSIONS):
+def fit_total_simulated_unbiased(SIMULATED_UNBIASED_ADMISSIONS):
     total_effect_model_simulated_unbiased, total_effect_inference_simulated_unbiased = fit_total_effect_model_admissions(SIMULATED_UNBIASED_ADMISSIONS)
     return (total_effect_inference_simulated_unbiased,)
 
 
 @app.cell
-def _(total_effect_inference_simulated_unbiased):
+def plot_total_simulated_unbiased(total_effect_inference_simulated_unbiased):
     plot_admissions_model_posterior(total_effect_inference_simulated_unbiased, (6, 1.5))
     return
 
@@ -966,7 +1146,7 @@ def _():
 
 @app.function
 def fit_direct_effect_model_admissions(data):
-    """Fit total effect model, stratifying by gender.
+    """Fit direct effect model, stratifying by gender and department.
 
     Note
     ----
@@ -1013,13 +1193,13 @@ def _():
 
 
 @app.cell
-def _(SIMULATED_BIASED_ADMISSIONS):
+def fit_direct_simulated_biased(SIMULATED_BIASED_ADMISSIONS):
     direct_effect_model_simulated_biased, direct_effect_inference_simulated_biased = fit_direct_effect_model_admissions(SIMULATED_BIASED_ADMISSIONS)
     return (direct_effect_inference_simulated_biased,)
 
 
 @app.cell
-def _(direct_effect_inference_simulated_biased):
+def plot_direct_simulated_biased(direct_effect_inference_simulated_biased):
     plot_admissions_model_posterior(direct_effect_inference_simulated_biased)
     return
 
@@ -1033,7 +1213,7 @@ def _():
 
 
 @app.cell
-def _(BIASED_ACCEPTANCE_RATES):
+def biased_rates_truth(BIASED_ACCEPTANCE_RATES):
     # Department x Gender
     BIASED_ACCEPTANCE_RATES
     return
@@ -1048,13 +1228,13 @@ def _():
 
 
 @app.cell
-def _(SIMULATED_UNBIASED_ADMISSIONS):
+def fit_direct_simulated_unbiased(SIMULATED_UNBIASED_ADMISSIONS):
     direct_effect_model_simulated_unbiased, direct_effect_inference_simulated_unbiased = fit_direct_effect_model_admissions(SIMULATED_UNBIASED_ADMISSIONS)
     return (direct_effect_inference_simulated_unbiased,)
 
 
 @app.cell
-def _(direct_effect_inference_simulated_unbiased):
+def plot_direct_simulated_unbiased(direct_effect_inference_simulated_unbiased):
     plot_admissions_model_posterior(direct_effect_inference_simulated_unbiased)
     return
 
@@ -1062,13 +1242,13 @@ def _(direct_effect_inference_simulated_unbiased):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    For comparison, here's the ground truth unbiased admission rates, which were able to recover:
+    For comparison, here's the ground truth unbiased admission rates, which we're able to recover:
     """)
     return
 
 
 @app.cell
-def _(UNBIASED_ACCEPTANCE_RATES):
+def unbiased_rates_truth(UNBIASED_ACCEPTANCE_RATES):
     # Department x Gender
     UNBIASED_ACCEPTANCE_RATES
     return
@@ -1087,7 +1267,7 @@ def _():
     mo.md(r"""
     ### Review of the counts dataset
     - we'll use these counts data to model log odds of acceptance rate for gender/department
-    - note that we'll be using Binomial Regression, which is equivalent to Bernoulli regression, but operates on aggregate counts, as oppose to individual binary trials
+    - note that we'll be using Binomial Regression, which is equivalent to Bernoulli regression, but operates on aggregate counts, as opposed to individual binary trials
       - The examples above were actually implemented as Binomial Regression so that we can re-use code and demonstrate general patterns of analysis
       - Either way, you'll get the same inference using both approaches
     """)
@@ -1095,7 +1275,7 @@ def _():
 
 
 @app.cell
-def _(ADMISSIONS):
+def admissions_data_review(ADMISSIONS):
     ADMISSIONS
     return
 
@@ -1111,13 +1291,13 @@ def _():
 
 
 @app.cell
-def _(ADMISSIONS):
+def fit_total_ucb(ADMISSIONS):
     total_effect_model, total_effect_inference = fit_total_effect_model_admissions(ADMISSIONS)
     return (total_effect_inference,)
 
 
 @app.cell
-def _(total_effect_inference):
+def plot_total_ucb(total_effect_inference):
     plot_admissions_model_posterior(total_effect_inference, figsize=(6, 1.5))
     return
 
@@ -1131,7 +1311,7 @@ def _():
 
 
 @app.cell
-def _(total_effect_inference):
+def total_effect_contrast(total_effect_inference):
     # Total Causal Effect
     _female_p_accept = total_effect_inference.posterior["p_accept"].sel(gender="female")
     _male_p_accept = total_effect_inference.posterior["p_accept"].sel(gender="male")
@@ -1157,19 +1337,19 @@ def _():
 
 
 @app.cell
-def _(ADMISSIONS):
+def fit_direct_ucb(ADMISSIONS):
     direct_effect_model, direct_effect_inference = fit_direct_effect_model_admissions(ADMISSIONS)
     return (direct_effect_inference,)
 
 
 @app.cell
-def _(direct_effect_inference):
+def plot_direct_ucb(direct_effect_inference):
     plot_admissions_model_posterior(direct_effect_inference, figsize=(6, 3))
     return
 
 
 @app.cell(hide_code=True)
-def _(ADMISSIONS, direct_effect_inference):
+def department_gender_posteriors(ADMISSIONS, direct_effect_inference):
     # Fancier plot of department/gender acceptance probability distributions
     _fig, _ax = plt.subplots(figsize=(10, 5))
     for _ii, _dept in enumerate(ADMISSIONS.dept.unique()):
@@ -1180,7 +1360,7 @@ def _(ADMISSIONS, direct_effect_inference):
             _post = direct_effect_inference.posterior['p_accept'].sel(department=_dept, gender=_gend)
             utils.plot_dist(_post, label=_label, color=_color, plot_kwargs={"linestyle": _linestyle})
     plt.xlabel("acceptance probability")
-    plt.legend(title='Deptartment:Gender')
+    plt.legend(title='Department:Gender')
     _fig
     return
 
@@ -1194,7 +1374,7 @@ def _():
 
 
 @app.cell
-def _(ADMISSIONS, direct_effect_inference):
+def direct_effect_contrast(ADMISSIONS, direct_effect_inference):
     # Direct Causal Effect
     _fig, _ax = plt.subplots(figsize=(8, 4))
 
@@ -1222,7 +1402,7 @@ def _():
     mo.md(r"""
     ### Average Direct Effect
     - The causal effect of gender **averaged across departments** (marginalize)
-    - Depends on the distribution of applications to each deparment
+    - Depends on the distribution of applications to each department
     - This is easy to do as a simulation
     """)
     return
@@ -1233,50 +1413,60 @@ def _():
     mo.md(r"""
     #### Post-stratification
     - **Re-weight estimates** for the target population
-    - allows us to apply model fit from one university to estiamte causal impact at another university with a different distribution of departments
-    - Here, we use the empirical distribution for re-weighting estimates
+    - allows us to apply model fit from one university to estimate causal impact at another university with a different distribution of departments
+    - Here, we use the empirical distribution of applications across departments: each posterior draw of the contrast comes from a department picked in proportion to its applications. This simulates the contrast an applicant at Berkeley experiences
     """)
     return
 
 
 @app.cell
-def _(ADMISSIONS, direct_effect_inference):
+def post_stratification(ADMISSIONS, direct_effect_inference):
     # Use the empirical distribution of departments -- we'd update this for a different university
-    _applications_per_dept = ADMISSIONS.groupby('dept').sum()['applications'].values
-    _total_applications = _applications_per_dept.sum()
-    _department_weight = _applications_per_dept / _total_applications
+    _applications_per_dept = ADMISSIONS.groupby('dept')['applications'].sum()
+    _department_weight = (_applications_per_dept / _applications_per_dept.sum()).reindex(
+        direct_effect_inference.posterior.department.values
+    ).values
 
-    _female_alpha = direct_effect_inference.posterior.sel(gender='female')['alpha']
-    _male_alpha = direct_effect_inference.posterior.sel(gender='male')['alpha']
+    # Contrast on the probability scale, per department: (chain x draw x department)
+    _p_accept = direct_effect_inference.posterior['p_accept']
+    department_contrast = _p_accept.sel(gender='male') - _p_accept.sel(gender='female')
+    _contrast = department_contrast.transpose('chain', 'draw', 'department').values.reshape(-1, department_contrast.sizes['department'])
 
-    _weighted_female_alpha = _female_alpha * _department_weight
-    _weighed_male_alpha = _male_alpha * _department_weight
+    # Simulate applications: each posterior draw gets a department, picked in
+    # proportion to the department's share of applications
+    _rng = np.random.default_rng(1)
+    _department_draws = _rng.choice(len(_department_weight), size=len(_contrast), p=_department_weight)
+    _post_stratified_contrast = _contrast[np.arange(len(_contrast)), _department_draws]
 
-    _contrast = _weighed_male_alpha - _weighted_female_alpha
+    # Average direct effect: the weighted average of the department contrasts
+    _average_effect = _contrast @ _department_weight
 
     _fig, _ax = plt.subplots(figsize=(8, 4))
-    utils.plot_dist(_contrast)
-
+    utils.plot_dist(_post_stratified_contrast, label="post-stratified contrast")
+    plt.axvline(
+        _average_effect.mean(), color='C1',
+        label=f"weighted average: {_average_effect.mean():.3f} ± {_average_effect.std():.3f}",
+    )
     plt.axvline(0, linestyle='--', color='k', label='No Difference')
-    plt.xlabel("causal effect of perceived gender")
+    plt.xlabel("gender contrast (acceptance probability)")
     plt.ylabel("density")
-    plt.title("Average Direct Causal of Gender (perception),\npositive values indicate male advantage")
+    plt.title("Average Direct Causal Effect of Gender (perception),\npositive values indicate male advantage")
     plt.xlim([-.3, .3])
     plt.legend()
     _fig
-    return
+    return (department_contrast,)
 
 
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    To verify the averaging process, we can look at the contrast of the `p_accept` samples from the posterior, which provides similar results. However, looking ath the posterior obviously wouldn't work for making predictions for an out-of-sample university however.
+    For comparison, here are the same department contrasts pooled with **equal weights**, as if every department received the same number of applications. The average moves from $-0.036$ to $-0.029$: department A, where women have the largest advantage, now counts for 1/6 of the applications instead of 21%. The average direct effect depends on the population we average over, which is why post-stratification needs a target population. Try other populations in the explorer below.
     """)
     return
 
 
 @app.cell
-def _(direct_effect_inference):
+def equal_weight_contrast(direct_effect_inference):
     _direct_posterior = direct_effect_inference.posterior
 
     # Select by gender; note: p_accept already has link function applied
@@ -1291,8 +1481,67 @@ def _(direct_effect_inference):
     plt.xlim([-.3, .3])
     plt.xlabel("causal effect of perceived gender")
     plt.ylabel("density")
-    plt.title("Posterior contrast of $p_{accept}$,\npositive values indicate male advantage")
+    plt.title("Contrast of $p_{accept}$, departments pooled with equal weights,\npositive values indicate male advantage")
     plt.legend()
+    _fig
+    return
+
+
+@app.cell(hide_code=True)
+def post_strat_controls(ADMISSIONS):
+    _applications = ADMISSIONS.pivot_table(index="dept", columns="applicant.gender", values="applications", aggfunc="sum")
+    post_strat_population = mo.ui.dropdown(
+        options={
+            "All Berkeley applications": _applications.sum(axis=1),
+            "Equal weights": _applications.sum(axis=1) * 0 + 1,
+            "Women's applications": _applications["female"],
+            "Men's applications": _applications["male"],
+        },
+        value="All Berkeley applications",
+        label="population to average over",
+    )
+    mo.vstack([
+        mo.md(r"""
+    #### Explore: the average direct effect depends on the population
+    The average direct effect is a weighted average of the department contrasts above, with weights from the target population. Women applied mostly to departments C to F, where the contrasts are close to zero. Men applied mostly to A and B, and A is where women have the largest advantage.
+    """),
+        post_strat_population,
+    ])
+    return (post_strat_population,)
+
+
+@app.cell(hide_code=True)
+def post_strat_explorer(department_contrast, post_strat_population):
+    _weights = post_strat_population.value.reindex(department_contrast.department.values).values.astype(float)
+    _weights = _weights / _weights.sum()
+    _contrast = department_contrast.transpose("chain", "draw", "department").values.reshape(-1, len(_weights))
+
+    # Post-stratified contrast: each posterior draw comes from a department picked by the weights
+    _rng = np.random.default_rng(1)
+    _draws = _rng.choice(len(_weights), size=len(_contrast), p=_weights)
+    _mixture = _contrast[np.arange(len(_contrast)), _draws]
+    _average = _contrast @ _weights
+
+    _fig, (_ax_weights, _ax_effect) = plt.subplots(1, 2, figsize=(12, 4), gridspec_kw={"width_ratios": [1, 2]})
+    _departments = department_contrast.department.values
+    _ax_weights.bar(_departments, _weights, color="C1", alpha=.7)
+    for _dept, _w, _c in zip(_departments, _weights, _contrast.mean(axis=0)):
+        _ax_weights.text(_dept, _w, f"{_c:+.2f}", ha="center", va="bottom", fontsize=9)
+    _ax_weights.set_ylim([0, max(.4, 1.2 * _weights.max())])
+    _ax_weights.set_xlabel("department")
+    _ax_weights.set_ylabel("weight")
+    _ax_weights.set_title("department weights\n(labels: mean contrast)")
+
+    plt.sca(_ax_effect)
+    utils.plot_dist(_mixture, label="post-stratified contrast")
+    plt.axvline(_average.mean(), color="C1", label=f"weighted average: {_average.mean():.3f} ± {_average.std():.3f}")
+    plt.axvline(0, linestyle="--", color="k", label="No Difference")
+    plt.xlim([-.3, .3])
+    plt.xlabel("gender contrast (acceptance probability)")
+    plt.ylabel("density")
+    plt.title(f"Average direct effect for: {post_strat_population.selected_key}\npositive values indicate male advantage")
+    plt.legend(loc="upper left", fontsize=8)
+    _fig.tight_layout()
     _fig
     return
 
@@ -1326,20 +1575,20 @@ def _():
     mo.md(r"""
     ## Example: Austin Cat Adoption
 
-    - 20k cats
+    - 22,356 cats
     - Events: adopted (1) or not (0)
     - Censoring mechanisms
       - death before adoption
       - escape
       - not adopted yet
 
-    **Goal**: determine if Black are adopted at a lower rate than non-Black cats.
+    **Goal**: determine if Black cats are adopted at a lower rate than non-Black cats.
     """)
     return
 
 
 @app.cell
-def _():
+def cats_data():
     CATS = utils.load_data('AustinCats')
     CATS.head()
     return (CATS,)
@@ -1366,14 +1615,14 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def exponential_gamma_plot():
     _fig, _axs = plt.subplots(1, 2, figsize=(10, 4))
 
     _days = np.linspace(0, 100, 100)
 
     plt.sca(_axs[0])
     for _scale in [20, 50]:
-        _expon = stats.expon(loc=.01, scale=_scale)
+        _expon = stats.expon(scale=_scale)
         utils.plot_line(_days, _expon.pdf(_days), label=f"$\\lambda$=1/{_scale}")
     plt.xlabel("days")
     plt.ylabel("density")
@@ -1382,11 +1631,10 @@ def _():
 
 
     plt.sca(_axs[1])
-    _N = 8
-    _alpha=10
+    _shape = 10
     for _scale in [2, 5]:
-        _gamma = stats.gamma(a=10, loc=_alpha, scale=_scale)
-        utils.plot_line(_days, _gamma.pdf(_days), label=f"$\\alpha$={_alpha}, $\\beta$={_scale}")
+        _gamma = stats.gamma(a=_shape, scale=_scale)
+        utils.plot_line(_days, _gamma.pdf(_days), label=f"shape={_shape}, scale={_scale}")
     plt.xlabel("days")
     plt.ylabel("density")
     plt.legend()
@@ -1406,7 +1654,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def cdf_ccdf_plot():
     _xs = np.linspace(0, 5, 100)
     _fig, _axs = plt.subplots(1, 2, figsize=(10, 5))
     plt.sca(_axs[0])
@@ -1416,7 +1664,7 @@ def _():
         utils.plot_line(_xs, _ys, label=f"$\\lambda={_lambda}$")
 
     plt.xlabel("x")
-    plt.ylabel("$1 - \\exp(-x)$")
+    plt.ylabel("$1 - \\exp(-\\lambda x)$")
     plt.legend()
     plt.title("CDF\np(event happened before or at time x| $\\lambda$)", fontsize=12)
 
@@ -1426,7 +1674,7 @@ def _():
         utils.plot_line(_xs, _ys, label=f"$\\lambda={_lambda}$")
 
     plt.xlabel("x")
-    plt.ylabel("$\\exp(-x)$")
+    plt.ylabel("$\\exp(-\\lambda x)$")
     plt.legend()
     plt.title("CCDF\np(event hasn't happened before or at time x| $\\lambda$)", fontsize=12)
     _fig
@@ -1446,18 +1694,18 @@ def _():
     mo.md(r"""
     $$
     \begin{align*}
-    D_i | A_i &= 1 \sim \text{Exponential}(\lambda_i) \\
-    D_i | A_i &= 0 \sim \text{ExponentialCCDF}(\lambda_i) \\
+    D_i | A_i = 1 &\sim \text{Exponential}(\lambda_i) \\
+    D_i | A_i = 0 &\sim \text{ExponentialCCDF}(\lambda_i) \\
     \lambda_i &= \frac{1}{\mu_i} \\
-    \log \mu_i &= \alpha_{\text{cat color}[i]} \\
+    \mu_i &= \alpha_{\text{cat color}[i]} \\
     \alpha_{Black, Other} &\sim \text{Exponential}(\gamma)
     \end{align*}
     $$
 
     - $D_i | A_i = 1$ - observed adoptions
-    - $D_i | A_i = 1$ - not-yet-observed adoptions
-    - $\alpha_{\text{cat color}[i]}$ log average time-to-adoption for each cat color
-    - $\log \mu_i$ -- link function ensures $\alpha$s are positive
+    - $D_i | A_i = 0$ - not-yet-observed adoptions: the cat wasn't adopted within $D_i$ days (censored)
+    - $\alpha_{\text{cat color}[i]}$ average time-to-adoption for each cat color
+    - the Exponential prior keeps the $\alpha$s positive. (In the lecture McElreath uses a log link, $\log \mu_i = \alpha_{\text{cat color}[i]}$, with a Normal prior on $\alpha$; the code below puts the prior on $\mu$ directly)
     - $\lambda_i = \frac{1}{\mu_i}$ simplifies estimating average **time-to-adoption**
     """)
     return
@@ -1467,13 +1715,13 @@ def _():
 def _():
     mo.md(r"""
     ### Finding reasonable hyperparameter for $\alpha$
-    We'll need to determine a reasonable data for the Exponential prior mean parameter $\gamma$. To do so, we'll look at the empirical distribution of time to adoption:
+    We'll need to determine a reasonable value for the rate $\gamma$ of the Exponential prior (its mean is $1 / \gamma$). To do so, we'll look at the empirical distribution of time to adoption:
     """)
     return
 
 
 @app.cell
-def _(CATS):
+def adoption_days_histogram(CATS):
     # determine reasonable prior for alpha
     _fig, _ax = plt.subplots(figsize=(6, 3))
     CATS[CATS.out_event == 'Adoption'].days_to_event.hist(bins=100)
@@ -1485,45 +1733,53 @@ def _(CATS):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Using the above empirical historgram, we see that a majority of the probablity mass is between zero and 200, so let's use 50 as the expected wait time.
+    Using the above empirical histogram, we see that a majority of the probability mass is between zero and 200, so let's use 50 days as the prior expected wait time ($\gamma = 1/50$).
     """)
     return
 
 
 @app.cell
-def _(CATS):
+def adoption_model_fit(CATS):
     CAT_COLOR_ID, CAT_COLOR = pd.factorize(CATS.color.apply(lambda x: "Other" if x != 'Black' else x))
-    ADOPTED_ID, ADOPTED = pd.factorize(CATS.out_event.apply(lambda x: "Other" if x != "Adoption" else 'Adopted'))
+    ADOPTED = (CATS.out_event == "Adoption").values
     DAYS_TO_ADOPTION = CATS.days_to_event.values.astype(float)
     LAMBDA = 50
 
     with pm.Model(coords={"cat_color": CAT_COLOR}) as adoption_model:
 
-        # Censoring
-        _right_censoring = DAYS_TO_ADOPTION.copy()
-        _right_censoring[ADOPTED_ID == 0] = DAYS_TO_ADOPTION.max()
+        # Censoring: a cat that wasn't adopted is right-censored at its own
+        # days_to_event (it was still waiting then). Adopted cats get an infinite
+        # upper bound, so their days are used as observed events.
+        _right_censoring = np.where(ADOPTED, np.inf, DAYS_TO_ADOPTION)
 
         # Priors
         _gamma = 1 / LAMBDA
         _alpha = pm.Exponential("alpha", _gamma, dims="cat_color")
 
         # Likelihood
-        _log_adoption_rate = 1 / _alpha[CAT_COLOR_ID]
+        _adoption_rate = 1 / _alpha[CAT_COLOR_ID]
         pm.Censored(
             "adopted",
-            pm.Exponential.dist(lam=_log_adoption_rate),
+            pm.Exponential.dist(lam=_adoption_rate),
             lower=None,
             upper=_right_censoring,
             observed=DAYS_TO_ADOPTION
         )
         adoption_inference = cached_sample()
-    return (adoption_inference,)
+    return (
+        ADOPTED,
+        CAT_COLOR,
+        CAT_COLOR_ID,
+        DAYS_TO_ADOPTION,
+        LAMBDA,
+        adoption_inference,
+    )
 
 
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## Poor black kittes 🐈‍⬛
+    ## Poor black kitties 🐈‍⬛
     It appears that black cats DO take longer to get adopted.
     """)
     return
@@ -1538,10 +1794,10 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(adoption_inference):
+def adoption_forest(adoption_inference):
     _fig, _ax = plt.subplots(figsize=(4, 2))
     utils.plot_forest(adoption_inference, var_names=['alpha'], hdi_prob=.89, ax=_ax)
-    plt.xlabel("days to adoption")
+    plt.xlabel("average days to adoption")
     _fig
     return
 
@@ -1555,13 +1811,13 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(adoption_inference):
+def adoption_posteriors(adoption_inference):
     _fig, _ax = plt.subplots()
     for _ii, _cat_color in enumerate(["Black", "Other"]):
         _color = 'black' if _cat_color == 'Black' else "C0"
         _posterior_alpha = adoption_inference.posterior.sel(cat_color=_cat_color)['alpha']
         utils.plot_dist(_posterior_alpha, color=_color, label=_cat_color)
-    plt.xlabel("waiting time")
+    plt.xlabel("average days to adoption")
     plt.ylabel("density")
     plt.legend()
     _fig
@@ -1569,7 +1825,7 @@ def _(adoption_inference):
 
 
 @app.cell(hide_code=True)
-def _(adoption_inference):
+def adoption_survival_curves(adoption_inference):
     _days_until_adoption = np.linspace(1, 100)
     _n_posterior_samples = 25
 
@@ -1583,14 +1839,96 @@ def _(adoption_inference):
             plt.plot(_days_until_adoption, np.exp(-_days_until_adoption/_alpha), color=_color, alpha=.25, label=_label)
 
     plt.xlabel("days until adoption")
-    plt.ylabel("fraction")
+    plt.ylabel("fraction not yet adopted")
     plt.legend()
     _fig
     return
 
 
 @app.cell(hide_code=True)
-def _():
+def censoring_controls():
+    censoring_treatment = mo.ui.radio(
+        options=["Censored, as in the model above", "Dropped", "Adopted on their last day"],
+        value="Censored, as in the model above",
+        label="Cats that weren't adopted are:",
+    )
+    mo.vstack([
+        mo.md(r"""
+    #### Explore: what if we ignore censoring?
+    About half of the cats weren't adopted (transferred, died, still waiting, ...). Compare three ways of treating them. The posterior of the average waiting time $\mu$ is computed exactly on a grid, with the same Exponential prior as above, so it updates instantly.
+
+    - **Censored**: each non-adopted cat says "not adopted within $D_i$ days" (the CCDF). This reproduces the MCMC fit above.
+    - **Dropped**: only adopted cats count, so the waiting times look shorter.
+    - **Adopted on their last day**: shorter still.
+
+    The dashed lines are the Kaplan-Meier estimate of the fraction not yet adopted, computed directly from the data while accounting for censoring.
+    """),
+        censoring_treatment,
+    ])
+    return (censoring_treatment,)
+
+
+@app.cell(hide_code=True)
+def censoring_explorer(
+    ADOPTED,
+    CAT_COLOR,
+    CAT_COLOR_ID,
+    DAYS_TO_ADOPTION,
+    LAMBDA,
+    censoring_treatment,
+):
+    def _kaplan_meier(days, adopted):
+        """Fraction not yet adopted after each adoption time, accounting for censoring"""
+        times = np.unique(days[adopted])
+        at_risk = len(days) - np.searchsorted(np.sort(days), times, side="left")
+        n_adopted = np.bincount(np.searchsorted(times, days[adopted]), minlength=len(times))
+        return times, np.cumprod(1 - n_adopted / at_risk)
+
+
+    _is_black = CAT_COLOR[CAT_COLOR_ID] == "Black"
+    _mu_grid = np.linspace(15, 75, 1201)
+    _t = np.linspace(0, 150, 151)
+
+    _fig, (_ax_post, _ax_surv) = plt.subplots(1, 2, figsize=(12, 4))
+    for _cat_color, _mask in [("Black", _is_black), ("Other", ~_is_black)]:
+        _color = "black" if _cat_color == "Black" else "C0"
+        _days, _adopted = DAYS_TO_ADOPTION[_mask], ADOPTED[_mask]
+        if censoring_treatment.value == "Dropped":
+            _n_adoptions, _total_days = _adopted.sum(), _days[_adopted].sum()
+        elif censoring_treatment.value == "Adopted on their last day":
+            _n_adoptions, _total_days = len(_days), _days.sum()
+        else:
+            _n_adoptions, _total_days = _adopted.sum(), _days.sum()
+
+        # Exponential log-likelihood with mean mu: each adoption adds -log(mu), each cat adds
+        # -days/mu (for a censored cat that is the log CCDF)
+        _log_posterior = -_n_adoptions * np.log(_mu_grid) - _total_days / _mu_grid + stats.expon(scale=LAMBDA).logpdf(_mu_grid)
+        _posterior = np.exp(_log_posterior - _log_posterior.max())
+        _posterior /= _posterior.sum() * (_mu_grid[1] - _mu_grid[0])
+        _mu_mean = (_mu_grid * _posterior).sum() * (_mu_grid[1] - _mu_grid[0])
+
+        _ax_post.plot(_mu_grid, _posterior, color=_color, label=f"{_cat_color}: {_mu_mean:.1f} days")
+        _ax_surv.plot(_t, np.exp(-_t / _mu_mean), color=_color, label=f"{_cat_color}, model")
+        _times, _not_adopted = _kaplan_meier(_days, _adopted)
+        _ax_surv.step(_times, _not_adopted, where="post", color=_color, linestyle="--", alpha=.7, label=f"{_cat_color}, data (Kaplan-Meier)")
+
+    _ax_post.set_xlabel("average days to adoption, $\\mu$")
+    _ax_post.set_ylabel("density")
+    _ax_post.set_title("posterior of $\\mu$")
+    _ax_post.legend()
+    _ax_surv.set_xlim([0, 150])
+    _ax_surv.set_ylim([0, 1.02])
+    _ax_surv.set_xlabel("days")
+    _ax_surv.set_ylabel("fraction not yet adopted")
+    _ax_surv.set_title("survival curves at the posterior mean")
+    _ax_surv.legend(fontsize=8)
+    _fig.tight_layout()
+    _fig
+    return
+
+
+@app.cell(hide_code=True)
+def environment():
     mo.accordion({"Environment": mo.plain_text(init_notebook.watermark_report())})
     return
 
