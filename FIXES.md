@@ -149,6 +149,41 @@ Notes:
 - The censoring explorer computes the posterior of μ exactly on a grid, which matches the MCMC fit. Its Kaplan-Meier curves follow the censored model and sit above the model that drops the non-adopted cats.
 - The logistic updating explorer uses a vectorized grid posterior on its own simulated data; the 8-figure demo keeps the original loop.
 
+## Lecture 10 - Counts & Hidden Confounds
+
+Code:
+
+- The admissions simulation accepted high-ability G2 applicants to D1 at 0.5 and G1 at 0.3, so D1 was biased, although the text and plot labels call it unbiased and say G1's lower rate there "isn't true". That rate is now 0.3, so D1 treats the genders equally at every ability level and D2 favors G2 at both. After the refit, the confounded direct-effect model shows a false G1 disadvantage in D1 (0.105 against 0.154) and hides the D2 bias (0.27 against 0.28). The latent ability model finds it (0.13 against 0.24).
+- The comment on department choice had the genders backwards: G1 applies to D2 only with high ability, G2 applies there 75% of the time.
+- The latent ability model indexed `alpha[gender, department]`, while `alpha` is defined as department × gender, so two of the four posteriors carried each other's labels. The plot looked right only because those two were close (0.13 and 0.14). It now indexes `alpha[DEPARTMENT_ID, GENDER_ID]`.
+- Renamed `DEPTARTMENT_ID` to `DEPARTMENT_ID`.
+- Removed the notes about PyMC PR #6882 (merged long ago) from the interaction and innovation models.
+- Seeded the posterior-predictive draws of the tools plots.
+- The second model comparison called the interaction model "contact"; it is now "interaction", as in the first.
+- Comments and labels: "statified", a fully stratified cell labelled "partially", "Z = 0 predictions" inside the loop over Z, `beta_Z` axis labels, and a missing x label on the probability histogram.
+
+Text that didn't match the code:
+
+- Model A's equation was $\lambda_i = \alpha_{C[i]}$ and the text said it had an offset for low- or high-contact populations. The code fits one global intercept with a log link: $\log(\lambda_i) = \alpha$.
+- Model B's equation was missing the log link and used $\log(P)$; the code uses the standardized log population.
+- The innovation model's estimates were quoted as 0.23–0.28 for α and β and 0.09 for γ. The fit gives about 0.3 for α, 0.26 and 0.30 for β, and 0.12 for γ. The text now also notes that α and γ are only identified through their ratio.
+- The text called the innovation / loss model "far superior (weight=.94)". Its weight is about 0.6, and it is only about 1 elpd ahead of the interaction model, within the standard error.
+- "Tonga isn't even included in the 89% HDI": it is, at the upper edge of the band.
+- "Poisson approaches Binomial" was the wrong way round.
+- The innovation constraint read $0 > \beta < 1$.
+- "You CANNOT estimate the direct effect of $D$ on $G$" should be of $G$ on $A$.
+- The sensitivity model's equations indexed α as $[G_i, D_i]$; they now match the code's $[D_i, G_i]$. A bold span crossed the green span and didn't render.
+- The Z=0 saturation is at about 0.62–0.66, not "around 0.6".
+- "see above Admissions analyses" referred to Lecture 09, and the Lecture 05 link pointed to the old `.ipynb` file.
+- The direct-effect α matrix used commas instead of `&`.
+- Typos: intererpretation, uobserved, disatvantaged, applicatins ofsetting, colider, woemen, suffere, Estimatinge, Bernouilli, innnovation, Poplulation, approching, prinicipled, observeed, develope a sicentific, notioin, attritions, hypoerparmeter, Binomal, Simpons's, phenoena, nameley, ellicits, Leture, causa, predicitions, Fullly.
+
+Notes:
+
+- With the simulation fixed, the text's conclusions hold: sorting by ability creates a false disadvantage in D1 and masks the D2 bias, and the latent ability model recovers the D2 bias.
+- The sensitivity explorer refits the same latent ability model for other confound strengths (about 15–20 s for a new setting, cached after that). Even at β = γ = 3 the D2 gap reaches only about 0.11 of the true 0.2, because the simulation isn't linear in the logit of ability.
+- The nonlinear haunting explorer fits both models by their posterior mode with the same Normal(0, 1) priors, instead of sampling, so it updates instantly.
+
 ## Lecture 12 - Multilevel Models
 
 Code:
