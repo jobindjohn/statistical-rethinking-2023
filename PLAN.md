@@ -87,6 +87,7 @@ Progress:
 - [x] **02:** 4 widgets (garden explorer, estimator test, toss-the-globe updater, misclassification explorer); `simulate_noisy_globe_toss` now misclassifies both ways.
 - [x] **03:** 4 widgets (summed steps to Normal, grid learning with +1/+8 buttons, prior explorer, estimator recovery), and a bonus section on vectorizing the grid posterior (about 4 s down to about 40 ms) with a slider version of the grid demo.
 - [x] **04:** 7 widgets (synthetic people, quadratic Bayesian updating, random polynomials, fitted polynomial order, spline basis playground, spline prior, cherry blossom refit with a run button); fixed the unused boosted sample, the missing `alpha` in the Full Luxury Bayes contrasts, the `Hbar` override in the height-wise contrast, polynomial standardization and axis labels.
+- [x] **05:** 6 widgets (prior predictive, breaking the fork, intervention size, confound playground, selection threshold, descendant strength); fixed the cross-tab labels, the no-op Loc/South shuffle and all-zero marriage rate in `simulate_divorce`, the true-value markers in the posterior plot, missing seeds, and equations that didn't match the code. The β priors are now Normal(0, 0.5) as the text says, and the simulation test now has a fork (`beta_age_marriage=1`).
 
 Bugs carried over from the original notebooks (pass 1 keeps them as they are):
 

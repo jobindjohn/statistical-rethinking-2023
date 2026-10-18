@@ -26,7 +26,7 @@ with app.setup:
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    # [Lecture 05 - Elemental Confounds](https://youtu.be/mBEA7PKDmiY?si=b4vr1l9rogryaiEB)
+    # [Lecture 05 - Elemental Confounds](https://youtu.be/mBEA7PKDmiYXsi=b4vr1l9rogryaiEB)
     """)
     return
 
@@ -35,20 +35,20 @@ def _():
 def _():
     mo.md(r"""
     # Causation & Association
-    ## Does Wafflehouse cause divorce?
+    ## Does Wafflehouse cause divorceX
     """)
     return
 
 
 @app.cell
-def _():
+def load_waffle_divorce():
     WAFFLEHOUSE_DIVORCE = utils.load_data("WaffleDivorce")
     WAFFLEHOUSE_DIVORCE.head()
     return (WAFFLEHOUSE_DIVORCE,)
 
 
 @app.cell(hide_code=True)
-def _(WAFFLEHOUSE_DIVORCE):
+def waffle_divorce_scatter(WAFFLEHOUSE_DIVORCE):
     _fig, _ax = plt.subplots()
     utils.plot_scatter(
         WAFFLEHOUSE_DIVORCE.WaffleHouses,
@@ -59,7 +59,7 @@ def _(WAFFLEHOUSE_DIVORCE):
         plt.annotate(_row.Loc, (_row.WaffleHouses+5, _row.Divorce), zorder=60)
 
     _ols_formula = "Divorce ~ WaffleHouses"
-    _linear_divorce_ols = smf.ols("Divorce ~ WaffleHouses", data=WAFFLEHOUSE_DIVORCE).fit()
+    _linear_divorce_ols = smf.ols(_ols_formula, data=WAFFLEHOUSE_DIVORCE).fit()
     utils.plot_line(
         WAFFLEHOUSE_DIVORCE.WaffleHouses,
         _linear_divorce_ols.predict(),
@@ -78,7 +78,7 @@ def _():
     mo.md(r"""
     - Waffle houses tend to be in the Southern US
     - There are also higher divorce rates in the Southern US
-    - Southernness creats a strong statistical association between Waffle Houses and divorce rate.
+    - Southernness creates a strong statistical association between Waffle Houses and divorce rate.
     - It's not plausible that Waffle House causes divorce rate
 
     **Correlation is Common in Nature -- Causation is Rare**
@@ -91,7 +91,7 @@ def _():
     mo.md(r"""
     - Goal is to address some **Estimand** -- a scientific question
       - i.e. metaphorical Cake we'd like to create
-    - We use an **Estimator**, which is a set of instructions to organnize code and data to create an estimate of the estimand
+    - We use an **Estimator**, which is a set of instructions to organize code and data to create an estimate of the estimand
       - metaphorical recipe
     - The resulting **Estimate** may or may not be the original Estimand you were aiming for. Many things can cause this
       - **bad recipe (e.g. estimator design or confounds -- the focus of this lecture)**
@@ -113,18 +113,18 @@ def _():
 
 
 @app.function
-def summarize_discrete_counfound_simulation(X, Y, Z):
-    print(f'Correlation between X and Y: {np.corrcoef(X, Y)[0, 1]:1.2}')
+def summarize_discrete_confound_simulation(X, Y, Z, z_name="Z"):
+    print(f'Correlation between X and Y: {np.corrcoef(X, Y)[0, 1]:1.2f}')
     print("Cross tabulation:")
-    print(utils.crosstab(X, Y, labels=['X', 'Y']))
+    print(pd.crosstab(pd.Series(X, name="X"), pd.Series(Y, name="Y")))
 
     for z in [0, 1]:
         X_z = X[Z==z]
         Y_z = Y[Z==z]
 
-        print(f'\nCorrelation between X and Y conditioned on Z={z}: {np.corrcoef(X_z, Y_z)[0, 1]:1.2f}')
+        print(f'\nCorrelation between X and Y conditioned on {z_name}={z}: {np.corrcoef(X_z, Y_z)[0, 1]:1.2f}')
         print("Cross tabulation:")
-        print(utils.crosstab(X_z, Y_z, labels=['X', 'Y']))
+        print(pd.crosstab(pd.Series(X_z, name="X"), pd.Series(Y_z, name="Y")))
 
 
 @app.function
@@ -183,7 +183,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def fork_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("Z", "X"), ("Z", "Y")
@@ -195,13 +195,13 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Note. If $Z$ was the _only_ common cause, $X$ and $Y$ would be clones of one another. There are other non-modeled/unobserved influences of $X$ and $Y$--often referred to as error terms $e_{X,Y}$ that are not included in the graph above, but nonetheless are causing the difference between $X$ and $Y$, and should be modeled, often as noise  in any generative model.
+    Note. If $Z$ was the _only_ common cause, $X$ and $Y$ would be clones of one another. There are other non-modeled/unobserved influences of $X$ and $Y$--often referred to as error terms $e_{X,Y}$ that are not included in the graph above, but nonetheless are causing the difference between $X$ and $Y$, and should be modeled, often as noise in any generative model.
     """)
     return
 
 
 @app.cell(hide_code=True)
-def _():
+def fork_dag_with_noise():
     utils.draw_causal_graph(
         edge_list=[
             ("Z", "X"), ("Z", "Y"), ("e_X", "X"), ("e_Y", "Y")
@@ -224,8 +224,8 @@ def _():
     $$
     \begin{align*}
     Z &\sim \text{Bernoulli}(0.5) \\
-    X &\sim \text{Bernoulli}(p*) \\
-    Y &\sim \text{Bernoulli}(p*) \\
+    X &\sim \text{Bernoulli}(p^*) \\
+    Y &\sim \text{Bernoulli}(p^*) \\
     p^* &= 0.9 \times Z + 0.1 \times (1 - Z) \\
     \end{align*}
     $$
@@ -234,7 +234,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def discrete_fork_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("Z", "X"),
@@ -250,7 +250,7 @@ def _():
 
 
 @app.cell
-def _():
+def simulate_discrete_fork():
     # Discrete Fork
     np.random.seed(321)
     _n_samples = 1000
@@ -273,8 +273,8 @@ def _():
 
 
 @app.cell
-def _(discrete_fork):
-    summarize_discrete_counfound_simulation(**discrete_fork)
+def discrete_fork_summary(discrete_fork):
+    summarize_discrete_confound_simulation(**discrete_fork)
     return
 
 
@@ -286,8 +286,8 @@ def _():
     $$
     \begin{align*}
     Z &\sim \text{Bernoulli}(0.5) \\
-    X &\sim \text{Normal}(Z, 1) \\
-    Y &\sim \text{Normal}(Z, 1) \\
+    X &\sim \text{Normal}(\mu^*, 1) \\
+    Y &\sim \text{Normal}(\mu^*, 1) \\
     \mu^* &= 2Z -1 \\
     \end{align*}
     $$
@@ -296,7 +296,7 @@ def _():
 
 
 @app.cell
-def _():
+def simulate_continuous_fork():
     # Continous Fork
     np.random.seed(1234)
     _n_samples = 400
@@ -313,7 +313,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(fork_data):
+def continuous_fork_plot(fork_data):
     plot_continuous_confound_simulation(fork_data, "The Fork\n$X \\leftarrow Z \\rightarrow Y$")
     plt.gcf()
     return
@@ -329,7 +329,7 @@ def _():
 
 
 @app.cell
-def _(WAFFLEHOUSE_DIVORCE):
+def wafflehouse_pairwise_plotter(WAFFLEHOUSE_DIVORCE):
     def plot_wafflehouse_pairwise(x_var, y_var, n_label=10, wafflehouse_divorce=WAFFLEHOUSE_DIVORCE):
         """Helper function for visualizing Wafflehouse data
         """
@@ -366,7 +366,7 @@ def _(WAFFLEHOUSE_DIVORCE):
             plt.annotate(label, (x + .1, y + .1))
 
         def camelcase_to_label(string):
-            return re.sub(r'(?<!^)(?=[A-Z])', ' ', string).lower()
+            return re.sub(r'(X<!^)(X=[A-Z])', ' ', string).lower()
 
         plt.xlabel(camelcase_to_label(x_var))
         plt.ylabel(camelcase_to_label(y_var))
@@ -379,7 +379,7 @@ def _(WAFFLEHOUSE_DIVORCE):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ### Marying the Owl
+    ### Marrying the Owl
     1. Estimand
     2. Scientific Model
     3. Statistical Model
@@ -392,7 +392,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def marriage_divorce_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("M", "D")
@@ -407,7 +407,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(plot_wafflehouse_pairwise):
+def marriage_divorce_scatter(plot_wafflehouse_pairwise):
     _fig, _ax = plt.subplots()
     plot_wafflehouse_pairwise('Marriage', 'Divorce', n_label=15)
     _fig
@@ -423,7 +423,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def age_divorce_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("A", "D")
@@ -438,7 +438,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(plot_wafflehouse_pairwise):
+def age_divorce_scatter(plot_wafflehouse_pairwise):
     _fig, _ax = plt.subplots()
     plot_wafflehouse_pairwise('MedianAgeMarriage', 'Divorce', n_label=15)
     _fig
@@ -454,7 +454,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def age_marriage_divorce_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("M", "D"),
@@ -462,8 +462,8 @@ def _():
             ("A", "D")
         ],
         edge_props={
-            ("A", "D"): {"label": " ?"},
-            ("M", "D"): {"label": " ?"}
+            ("A", "D"): {"label": " X"},
+            ("M", "D"): {"label": " X"}
         },
         graph_direction="LR"
     )
@@ -471,7 +471,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(plot_wafflehouse_pairwise):
+def waffle_pairwise_scatters(plot_wafflehouse_pairwise):
     _fig, _axs = plt.subplots(1, 3, figsize=(12, 4))
 
     plt.sca(_axs[0])
@@ -489,7 +489,7 @@ def _(plot_wafflehouse_pairwise):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    - **Is the effect of Marriage rate on Divorce rate solely the result of their common cause Age--i.e. the Fork?**
+    - **Is the effect of Marriage rate on Divorce rate solely the result of their common cause Age--i.e. the ForkX**
       - Can't tell from just looking at the scatter plots above.
     - We need to **break the Fork by stratifying by Age**
 
@@ -539,13 +539,13 @@ def _():
     D &= f(A, M) \\
     D_i &\sim \text{Normal}(\mu_i, \sigma) \\
     \mu_i &= \alpha + \beta_M M_i + \beta_A A_i \\
-    \alpha &\sim \text{Normal}(\mu_?, \sigma_?) \\
-    \beta_{A, M} &\sim \text{Normal}(\mu_?, \sigma_?) \\
-    \sigma &\sim \text{Exponential}(\lambda_?)
+    \alpha &\sim \text{Normal}(\mu_X, \sigma_X) \\
+    \beta_{A, M} &\sim \text{Normal}(\mu_X, \sigma_X) \\
+    \sigma &\sim \text{Exponential}(\lambda_X)
     \end{align*}
     $$
 
-    What parameters $\theta_?$  do we use for the priors? **Enter Prior Predictive Simulation**
+    What parameters $\theta_X$  do we use for the priorsX **Enter Prior Predictive Simulation**
 
     #### 💡 When working with Linear Regression, it's always always a good idea to **standardize**
     - $X_{standardized} = \frac{(X - \bar X)}{\bar \sigma}$
@@ -553,7 +553,7 @@ def _():
     - results in a mean of 0 and standard deviation of 1
     - simplifies prior definition
     - makes inference run smoother
-    - can always reverse the standarization transformation (using $\bar X$ and $\bar \sigma$) to get back to the original space
+    - can always reverse the standardization transformation (using $\bar X$ and $\bar \sigma$) to get back to the original space
     """)
     return
 
@@ -592,7 +592,7 @@ def _():
 
 
 @app.cell
-def _():
+def wide_prior_lines():
     _fig, _ax = plt.subplots()
     simulate_linear_model_priors(std=10)
     _fig
@@ -608,10 +608,39 @@ def _():
 
 
 @app.cell
-def _():
+def narrow_prior_lines():
     _fig, _ax = plt.subplots()
     simulate_linear_model_priors(std=.5)
     _fig
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    #### Explore the prior
+    Change the prior standard deviation of the intercept $\alpha$ and slope $\beta$. For standardized variables, values around $0.5$ keep most lines within the plausible range; much larger values produce absurdly steep lines.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def prior_predictive_controls():
+    prior_std = mo.ui.slider(steps=[0.1, 0.2, 0.5, 1, 2, 5, 10], value=0.5, label=r"Prior std of $\alpha$ and $\beta$", show_value=True)
+    prior_n_lines = mo.ui.slider(10, 200, step=10, value=100, label="Lines", show_value=True)
+    return prior_n_lines, prior_std
+
+
+@app.cell(hide_code=True)
+def prior_predictive_explorer(prior_n_lines, prior_std):
+    np.random.seed(1)
+    _fig, _ax = plt.subplots()
+    simulate_linear_model_priors(std=prior_std.value, n_simulations=prior_n_lines.value)
+    plt.title(f"$\\alpha, \\beta \\sim Normal(0, {prior_std.value})$")
+    mo.vstack([
+        mo.hstack([prior_std, prior_n_lines], justify="start", gap=2),
+        _fig,
+    ])
     return
 
 
@@ -632,7 +661,7 @@ def _():
     \sigma &\sim \text{Exponential}(1)
     \end{align*}
     $$
-    where we've standardized all the input variable such that we can use standard normal for all intercept/slope parmaeter priors
+    where we've standardized all the input variables, so that we can use tight, zero-centered Normal priors for the intercept and slopes
 
     #### Run the statistical model on the simulated data
     Verify that we can recover the parameters from a generative process that matches the statistical model
@@ -641,7 +670,7 @@ def _():
 
 
 @app.cell
-def _(WAFFLEHOUSE_DIVORCE):
+def divorce_simulator(WAFFLEHOUSE_DIVORCE):
     def simulate_divorce(
         beta_marriage_divorce=1,
         beta_age_divorce=-1,
@@ -657,9 +686,7 @@ def _(WAFFLEHOUSE_DIVORCE):
         age = stats.norm.rvs(size=N_STATES)
 
         # Marriage rate
-        marriage_rate = 0
-        if beta_marriage_divorce != 0:
-            marriage_rate = age * beta_age_marriage + stats.norm(0, sigma).rvs(size=N_STATES)
+        marriage_rate = age * beta_age_marriage + stats.norm(0, sigma).rvs(size=N_STATES)
 
         # Divorce Rate
         mu = alpha + marriage_rate * beta_marriage_divorce + age * beta_age_divorce
@@ -674,20 +701,22 @@ def _(WAFFLEHOUSE_DIVORCE):
         )
 
         # Shuffle actual labels to retain same proportion of Southern/Other states
-        # i.e. Southern state has no effect on parameters in this simulation
+        # i.e. Southern state has no effect on parameters in this simulation.
+        # `.to_numpy()` stops pandas from realigning the shuffled rows on the index.
         simulated_location = WAFFLEHOUSE_DIVORCE[['Loc', "South"]].sample(frac=1.0)
-        simulated_divorce.loc[:, ['Loc', 'South']] = simulated_location
+        simulated_divorce["Loc"] = simulated_location["Loc"].to_numpy()
+        simulated_divorce["South"] = simulated_location["South"].to_numpy()
         return simulated_divorce
 
     return (simulate_divorce,)
 
 
 @app.cell
-def _(simulate_divorce):
+def simulate_marriage_divorce(simulate_divorce):
     MARRIAGE_DIVORCE_SIMULATION_PARAMS = dict(
         beta_marriage_divorce=1,
         beta_age_divorce=-1,
-        beta_age_marriage=0,
+        beta_age_marriage=1,
         alpha=0,
         sigma=0.5
     )
@@ -696,7 +725,10 @@ def _(simulate_divorce):
 
 
 @app.cell(hide_code=True)
-def _(SIMULATED_MARRIAGE_DIVORCE, plot_wafflehouse_pairwise):
+def simulated_marriage_divorce_scatters(
+    SIMULATED_MARRIAGE_DIVORCE,
+    plot_wafflehouse_pairwise,
+):
     # Plot simulation
     _fig, _axs = plt.subplots(1, 3, figsize=(12, 4))
 
@@ -712,8 +744,74 @@ def _(SIMULATED_MARRIAGE_DIVORCE, plot_wafflehouse_pairwise):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
+    mo.md(r"""
+    #### Breaking the fork
+    Simulate 50 states with your own causal effects, then estimate the effect of $M$ on $D$ in two ways: from $M$ alone ($D \sim M$), and stratified by age ($D \sim M + A$). When $\beta_{AM}$ and $\beta_{AD}$ are both nonzero, $A$ is a fork, and only the stratified estimate recovers the true $\beta_{MD}$. Try $\beta_{MD} = 0$: on its own, $M$ still seems to affect $D$.
+
+    These fits use least squares for speed; with 50 states, the Bayesian model gives nearly the same estimates.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def breaking_fork_controls():
+    fork_beta_am = mo.ui.slider(-2, 2, step=0.25, value=1, label=r"$\beta_{AM}$ (A ? M)", show_value=True)
+    fork_beta_ad = mo.ui.slider(-2, 2, step=0.25, value=-1, label=r"$\beta_{AD}$ (A ? D)", show_value=True)
+    fork_beta_md = mo.ui.slider(-2, 2, step=0.25, value=0, label=r"$\beta_{MD}$ (M ? D)", show_value=True)
+    fork_resample = mo.ui.button(value=0, on_click=lambda count: count + 1, label="New states")
+    return fork_beta_ad, fork_beta_am, fork_beta_md, fork_resample
+
+
+@app.cell(hide_code=True)
+def breaking_fork_explorer(
+    fork_beta_ad,
+    fork_beta_am,
+    fork_beta_md,
+    fork_resample,
+    simulate_divorce,
+):
+    _sim = simulate_divorce(
+        beta_marriage_divorce=fork_beta_md.value,
+        beta_age_divorce=fork_beta_ad.value,
+        beta_age_marriage=fork_beta_am.value,
+        random_seed=1 + fork_resample.value,
+    )
+    _fits = {
+        "D ~ M": smf.ols("Divorce ~ Marriage", data=_sim).fit(),
+        "D ~ M + A": smf.ols("Divorce ~ Marriage + MedianAgeMarriage", data=_sim).fit(),
+    }
+
+    _fig, _axs = plt.subplots(1, 2, figsize=(11, 4))
+    plt.sca(_axs[0])
+    utils.plot_scatter(_sim.Marriage, _sim.Divorce)
+    _xs = np.linspace(_sim.Marriage.min(), _sim.Marriage.max(), 10)
+    _params = _fits["D ~ M"].params
+    utils.plot_line(_xs, _params.Intercept + _params.Marriage * _xs, color="k", label="D ~ M")
+    plt.xlabel("marriage rate (simulated)")
+    plt.ylabel("divorce rate (simulated)")
+    plt.legend()
+
+    plt.sca(_axs[1])
+    for _y, (_label, _fit) in enumerate(_fits.items()):
+        _lower, _upper = _fit.conf_int(alpha=0.11).loc["Marriage"]
+        plt.hlines(_y, _lower, _upper, color=f"C{_y}", linewidth=3)
+        plt.scatter(_fit.params.Marriage, _y, color=f"C{_y}", s=80, zorder=3)
+    plt.axvline(fork_beta_md.value, color="k", linestyle="--", label=r"true $\beta_{MD}$")
+    plt.yticks([0, 1], list(_fits))
+    plt.ylim(-0.5, 1.5)
+    plt.xlabel("estimated effect of M on D (89% interval)")
+    plt.legend()
+    mo.vstack([
+        mo.hstack([fork_beta_am, fork_beta_ad, fork_beta_md, fork_resample], justify="start", wrap=True),
+        _fig,
+    ])
+    return
+
+
+@app.cell
+def marriage_divorce_model_params():
     MARRIAGE_DIVORCE_MODEL_PARAMS = ["alpha", "beta_marriage", "beta_age",  "sigma"]
     return (MARRIAGE_DIVORCE_MODEL_PARAMS,)
 
@@ -733,8 +831,8 @@ def fit_marriage_divorce_model(data):
 
         sigma = pm.Exponential("sigma", 1)
         alpha = pm.Normal("alpha", 0, 0.2)
-        beta_age = pm.Normal("beta_age", 0, 1)
-        beta_marriage = pm.Normal("beta_marriage", 0, 1)
+        beta_age = pm.Normal("beta_age", 0, 0.5)
+        beta_marriage = pm.Normal("beta_marriage", 0, 0.5)
 
         ## Divorce process
         mu = alpha + beta_marriage * marriage_rate + beta_age * age
@@ -756,6 +854,8 @@ def plot_divorce_model_posterior(
     actual_params=None,
     ax=None
 ):
+    """Forest plot of the posterior. `actual_params` maps each model
+    parameter to the value used to simulate the data."""
     if ax is None:
         _, ax = plt.subplots(figsize=(10, 2))
 
@@ -767,20 +867,25 @@ def plot_divorce_model_posterior(
     )
     title = "Posterior"
     if actual_params is not None:
-        for param in actual_params:
-            plt.axvline(param, color='k', linestyle='--')
-        title += " and\nActual Parameter Values"
+        # utils.plot_forest draws the first parameter on the top row
+        ys = np.arange(len(model_params))[::-1]
+        for y, param in zip(ys, model_params):
+            plt.scatter(actual_params[param], y, marker="x", s=100, color="k", zorder=4)
+        title += " and\nActual Parameter Values (x)"
     plt.title(title)
 
 
 @app.cell
-def _(SIMULATED_MARRIAGE_DIVORCE):
+def simulated_marriage_divorce_fit(SIMULATED_MARRIAGE_DIVORCE):
     simulated_marriage_divorce_model, simulated_marriage_divorce_inference = fit_marriage_divorce_model(SIMULATED_MARRIAGE_DIVORCE)
     return (simulated_marriage_divorce_inference,)
 
 
 @app.cell
-def _(MARRIAGE_DIVORCE_MODEL_PARAMS, simulated_marriage_divorce_inference):
+def simulated_marriage_divorce_summary(
+    MARRIAGE_DIVORCE_MODEL_PARAMS,
+    simulated_marriage_divorce_inference,
+):
     az.summary(
         simulated_marriage_divorce_inference,
         var_names=MARRIAGE_DIVORCE_MODEL_PARAMS
@@ -789,7 +894,7 @@ def _(MARRIAGE_DIVORCE_MODEL_PARAMS, simulated_marriage_divorce_inference):
 
 
 @app.cell(hide_code=True)
-def _(
+def simulated_marriage_divorce_posterior(
     MARRIAGE_DIVORCE_MODEL_PARAMS,
     MARRIAGE_DIVORCE_SIMULATION_PARAMS,
     simulated_marriage_divorce_inference,
@@ -797,7 +902,12 @@ def _(
     plot_divorce_model_posterior(
         simulated_marriage_divorce_inference,
         model_params=MARRIAGE_DIVORCE_MODEL_PARAMS,
-        actual_params=MARRIAGE_DIVORCE_SIMULATION_PARAMS.values()
+        actual_params={
+            "alpha": MARRIAGE_DIVORCE_SIMULATION_PARAMS["alpha"],
+            "beta_marriage": MARRIAGE_DIVORCE_SIMULATION_PARAMS["beta_marriage_divorce"],
+            "beta_age": MARRIAGE_DIVORCE_SIMULATION_PARAMS["beta_age_divorce"],
+            "sigma": MARRIAGE_DIVORCE_SIMULATION_PARAMS["sigma"],
+        }
     )
     plt.gcf()
     return
@@ -806,13 +916,15 @@ def _(
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    cool. We can recover our params with this model. Let's try it on real data.
+    Cool. We can recover our params with this model. Let's try it on real data.
+
+    > Note: the true values sit near the edges of the 89% intervals. With $\beta_{AM} = 1$, $M$ and $A$ are strongly correlated, and the tight $\text{Normal}(0, 0.5)$ priors pull both slopes toward 0. Set `beta_age_marriage=0.5` in the simulation above for a closer recovery.
     """)
     return
 
 
 @app.cell
-def _(WAFFLEHOUSE_DIVORCE):
+def standardize_waffle_divorce(WAFFLEHOUSE_DIVORCE):
     # Generate a standardized version of the real data
     WAFFLEHOUSE_DIVORCE_STD = WAFFLEHOUSE_DIVORCE.copy()
 
@@ -823,13 +935,16 @@ def _(WAFFLEHOUSE_DIVORCE):
 
 
 @app.cell
-def _(WAFFLEHOUSE_DIVORCE_STD):
+def marriage_divorce_fit(WAFFLEHOUSE_DIVORCE_STD):
     marriage_divorce_model, marriage_divorce_inference = fit_marriage_divorce_model(WAFFLEHOUSE_DIVORCE_STD)
     return marriage_divorce_inference, marriage_divorce_model
 
 
 @app.cell(hide_code=True)
-def _(MARRIAGE_DIVORCE_MODEL_PARAMS, marriage_divorce_inference):
+def marriage_divorce_posterior(
+    MARRIAGE_DIVORCE_MODEL_PARAMS,
+    marriage_divorce_inference,
+):
     plot_divorce_model_posterior(marriage_divorce_inference, model_params=MARRIAGE_DIVORCE_MODEL_PARAMS)
     plt.gcf()
     return
@@ -854,7 +969,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def no_intervention_dag():
     # Without Interventions
     utils.draw_causal_graph(
         edge_list=[
@@ -873,13 +988,13 @@ def _():
     #### $do(M)$
     - We "play God" by setting the value of $M$
     - Deletes the arrow entering $M$
-      - thus breaks the associating $A$ and
+      - thus breaks the association between $A$ and $M$
     """)
     return
 
 
 @app.cell(hide_code=True)
-def _():
+def do_marriage_dag():
     # With Interventions do(M)
     utils.draw_causal_graph(
         edge_list=[
@@ -894,13 +1009,19 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Now we simulate two worlds where $M$ takes on very different values (e.g. 0 and +1 std) to identify the possible range of causal effects of Marriage on Age. In principle, we could do this for any number of values along the continuum of $M$
+    Now we simulate two worlds where $M$ takes on very different values (e.g. 0 and +1 std) to identify the possible range of causal effects of Marriage on Divorce. In principle, we could do this for any number of values along the continuum of $M$. The slider below sets the size of the intervention.
     """)
     return
 
 
+@app.cell(hide_code=True)
+def intervention_controls():
+    intervention_delta_m = mo.ui.slider(0.25, 3, step=0.25, value=1, label="Increase in $M$ (std)", show_value=True)
+    return (intervention_delta_m,)
+
+
 @app.cell
-def _(marriage_divorce_inference):
+def intervention_explorer(intervention_delta_m, marriage_divorce_inference):
     np.random.seed(123)
     _n_simulations = int(1e3)
     _posterior = marriage_divorce_inference.posterior.sel(chain=0)
@@ -915,7 +1036,7 @@ def _(marriage_divorce_inference):
     _beta_marriage_samples = np.random.choice(_posterior.beta_marriage, size=_n_simulations, replace=True)
 
     _marriage_contrast = {}
-    _n_std_increase = 1
+    _n_std_increase = intervention_delta_m.value
     for _do_marriage in [0,  _n_std_increase]:  # Playing God, setting the value of Marriage Rate
         _mu = _alpha_samples + _beta_age_samples * _age_samples + _beta_marriage_samples * _do_marriage
         _marriage_contrast[_do_marriage] = stats.norm.rvs(_mu, _sigma_samples)
@@ -930,20 +1051,23 @@ def _(marriage_divorce_inference):
         f"by {_n_std_increase} standard deviations on Divorce Rate\n"
         f"$p(\\delta < 0) = {_prob_lt_zero:1.2}$"
     )
-    _fig
+    mo.vstack([intervention_delta_m, _fig])
     return
 
 
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    But that's just one slice of the Marriage range. We can use pymc to look at the causal effect of shifting Age over a range of values.
+    But that's just one slice of the Marriage range. We can use pymc to look at the causal effect of shifting Marriage over a range of values.
     """)
     return
 
 
 @app.cell
-def _(marriage_divorce_inference, marriage_divorce_model):
+def marriage_counterfactual_ppd(
+    marriage_divorce_inference,
+    marriage_divorce_model,
+):
     marriage_counterfactuals = xr.DataArray(np.linspace(-3, 3, 100))
     _age_counterfactuals = xr.DataArray(np.zeros_like(marriage_counterfactuals))  # set all to average age
     with marriage_divorce_model:
@@ -953,7 +1077,10 @@ def _(marriage_divorce_inference, marriage_divorce_model):
 
 
 @app.cell(hide_code=True)
-def _(marriage_counterfactuals, ppd_marriage_divorce):
+def marriage_counterfactual_plot(
+    marriage_counterfactuals,
+    ppd_marriage_divorce,
+):
     _fig, _ax = plt.subplots()
     utils.plot_hdi(
         marriage_counterfactuals,
@@ -966,7 +1093,7 @@ def _(marriage_counterfactuals, ppd_marriage_divorce):
         color="C0"
     )
     plt.xlabel("marriage counterfactual (in standard deviations)")
-    plt.ylabel("causal effect (in std deviations)")
+    plt.ylabel("divorce rate (in std deviations)")
     plt.title("Causal effect of Marriage Rate on\nDivorce Rate in standard deviations")
     _fig
     return
@@ -975,12 +1102,12 @@ def _(marriage_counterfactuals, ppd_marriage_divorce):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## Causal Effect of Age on Divorce Rate?
-    - how do we do implement $do(A)$?
+    ## Causal Effect of Age on Divorce RateX
+    - how do we do implement $do(A)$X
     - There are no causal arrows that we need to remove for an intervention
     - **This requires a new model that ignores $M$**
       - we can then simulate any intervention on $A$
-    - Why can we ignore $M$?
+    - Why can we ignore $M$X
       - because $A \rightarrow M \rightarrow D$ is **a Pipe**
     """)
     return
@@ -1010,7 +1137,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def pipe_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("X", "Z"),
@@ -1042,7 +1169,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def discrete_pipe_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("X", "Z"),
@@ -1058,7 +1185,7 @@ def _():
 
 
 @app.cell
-def _():
+def simulate_discrete_pipe():
     np.random.seed(1234)
     _n_samples = 1000
     _X = stats.bernoulli.rvs(p=.5, size=_n_samples)
@@ -1083,15 +1210,15 @@ def _():
 
 
 @app.cell
-def _(discrete_pipe):
-    summarize_discrete_counfound_simulation(**discrete_pipe)
+def discrete_pipe_summary(discrete_pipe):
+    summarize_discrete_confound_simulation(**discrete_pipe)
     return
 
 
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ### Why does this happen?
+    ### Why does this happenX
      - everything $X$ knows about $Y$, $Z$ knows
      - once you learn about $Z$, there is nothing else to learn about the association between $X$ and $Y$
     """)
@@ -1117,7 +1244,7 @@ def _():
 
 
 @app.cell
-def _():
+def simulate_continuous_pipe():
     np.random.seed(1234)
     _n_samples = 1000
 
@@ -1133,7 +1260,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(pipe_data):
+def continuous_pipe_plot(pipe_data):
     plot_continuous_confound_simulation(pipe_data, "The Pipe\n$X \\rightarrow  Z \\rightarrow Y$")
     plt.gcf()
     return
@@ -1148,7 +1275,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def plant_growth_dag():
     utils.draw_causal_graph(
         [
             ("H0", "H1"),
@@ -1174,15 +1301,15 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ### To estimate the **Total Causal Effect** of Treatment, should we Stratify by F?
+    ### To estimate the **Total Causal Effect** of Treatment, should we Stratify by FX
 
     **NO**
     - Stratifying by F would be a bad idea here if we wanted to estimate the total causal effect of T on H1, because of the $T \rightarrow F \rightarrow H1$ pipe in the graph.
-    - Stratifying by F would block infromation about T's affect on H1 that flow through F.
+    - Stratifying by F would block information about T's effect on H1 that flow through F.
     - NOTE: stratifying by $F$ would give the **Direct Causal Effect** of $T$ on $H1$
 
     This is an example of **post-treatment bias**.
-    > Rule of Thumb: **consequence of the treatement should not be included in an estimator.**
+    > Rule of Thumb: **consequence of the treatment should not be included in an estimator.**
     """)
     return
 
@@ -1191,17 +1318,17 @@ def _():
 def _():
     mo.md(r"""
     ### Statistical Model for Causal Effect of Age on Divorce Rate
-    McElreath meantions how we could/should build and test this model, but doesn't do this in the lecture, so we do it here!
+    McElreath mentions how we could/should build and test this model, but doesn't do this in the lecture, so we do it here!
 
     The Age-Divorce model is similar to the Marriage-Divorce model, but we no longer need to stratify by Marriage.
 
     $$
     \begin{align*}
-    D &= f(A, M) \\
+    D &= f(A) \\
     D_i &\sim \text{Normal}(\mu_i, \sigma) \\
     \mu_i &= \alpha + \beta_A A_i \\
     \alpha &\sim \text{Normal}(0, 0.2) \\
-    \beta_A &\sim \text{Normal}(0, 1) \\
+    \beta_A &\sim \text{Normal}(0, 0.5) \\
     \sigma &\sim \text{Exponential}(1)
     \end{align*}
     $$
@@ -1210,7 +1337,7 @@ def _():
 
 
 @app.cell
-def _():
+def age_divorce_model_params():
     AGE_DIVORCE_MODEL_PARAMS = ["sigma", "alpha", "beta_age"]
     return (AGE_DIVORCE_MODEL_PARAMS,)
 
@@ -1225,7 +1352,7 @@ def fit_age_divorce_model(data):
         )
 
         alpha = pm.Normal("alpha", 0, 0.2)
-        beta_age = pm.Normal("beta_age", 0, 1)
+        beta_age = pm.Normal("beta_age", 0, 0.5)
         sigma = pm.Exponential("sigma", 1)
 
         ## Divorce process
@@ -1250,7 +1377,7 @@ def _():
 
 
 @app.cell
-def _(simulate_divorce):
+def simulate_age_divorce(simulate_divorce):
     AGE_DIVORCE_SIMULATION_PARAMS = dict(
         beta_age_divorce=-1.,
         sigma=.5,
@@ -1263,7 +1390,10 @@ def _(simulate_divorce):
 
 
 @app.cell(hide_code=True)
-def _(SIMULATED_AGE_DIVORCE, plot_wafflehouse_pairwise):
+def simulated_age_divorce_scatter(
+    SIMULATED_AGE_DIVORCE,
+    plot_wafflehouse_pairwise,
+):
     # Plot simulation
     _fig, _ax = plt.subplots(figsize=(4, 4))
     plot_wafflehouse_pairwise('MedianAgeMarriage', 'Divorce', n_label=15, wafflehouse_divorce=SIMULATED_AGE_DIVORCE)
@@ -1272,13 +1402,13 @@ def _(SIMULATED_AGE_DIVORCE, plot_wafflehouse_pairwise):
 
 
 @app.cell
-def _(SIMULATED_AGE_DIVORCE):
+def simulated_age_divorce_fit(SIMULATED_AGE_DIVORCE):
     simulated_age_divorce_model, simulated_age_divorce_inference = fit_age_divorce_model(SIMULATED_AGE_DIVORCE)
     return (simulated_age_divorce_inference,)
 
 
 @app.cell(hide_code=True)
-def _(
+def simulated_age_divorce_posterior(
     AGE_DIVORCE_MODEL_PARAMS,
     AGE_DIVORCE_SIMULATION_PARAMS,
     simulated_age_divorce_inference,
@@ -1286,7 +1416,11 @@ def _(
     plot_divorce_model_posterior(
         simulated_age_divorce_inference,
         model_params=AGE_DIVORCE_MODEL_PARAMS,
-        actual_params=AGE_DIVORCE_SIMULATION_PARAMS.values()
+        actual_params={
+            "alpha": AGE_DIVORCE_SIMULATION_PARAMS["alpha"],
+            "beta_age": AGE_DIVORCE_SIMULATION_PARAMS["beta_age_divorce"],
+            "sigma": AGE_DIVORCE_SIMULATION_PARAMS["sigma"],
+        }
     )
     plt.gcf()
     return
@@ -1310,13 +1444,13 @@ def _():
 
 
 @app.cell
-def _(WAFFLEHOUSE_DIVORCE_STD):
+def age_divorce_fit(WAFFLEHOUSE_DIVORCE_STD):
     age_divorce_model, age_divorce_inference = fit_age_divorce_model(WAFFLEHOUSE_DIVORCE_STD)
     return age_divorce_inference, age_divorce_model
 
 
 @app.cell(hide_code=True)
-def _(AGE_DIVORCE_MODEL_PARAMS, age_divorce_inference):
+def age_divorce_posterior(AGE_DIVORCE_MODEL_PARAMS, age_divorce_inference):
     plot_divorce_model_posterior(
         age_divorce_inference,
         model_params=AGE_DIVORCE_MODEL_PARAMS
@@ -1334,7 +1468,7 @@ def _():
 
 
 @app.cell
-def _(age_divorce_inference, age_divorce_model):
+def age_counterfactual_ppd(age_divorce_inference, age_divorce_model):
     age_counterfactuals = xr.DataArray(np.linspace(-3, 3, 100))
 
     with age_divorce_model:
@@ -1344,7 +1478,7 @@ def _(age_divorce_inference, age_divorce_model):
 
 
 @app.cell(hide_code=True)
-def _(age_counterfactuals, ppd_age):
+def age_counterfactual_plot(age_counterfactuals, ppd_age):
     _fig, _ax = plt.subplots()
     utils.plot_hdi(
         age_counterfactuals,
@@ -1357,7 +1491,7 @@ def _(age_counterfactuals, ppd_age):
         color="C0"
     )
     plt.xlabel("age counterfactual (in standard deviations)")
-    plt.ylabel("causal effect (in std deviations)")
+    plt.ylabel("divorce rate (in std deviations)")
     plt.title("Causal effect of Age on Divorce Rate in standard deviations")
     _fig
     return
@@ -1379,7 +1513,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def collider_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("X", "Z"),
@@ -1400,7 +1534,7 @@ def _():
     \begin{align*}
     X &\sim \text{Bernoulli}(0.5) \\
     Y &\sim \text{Bernoulli}(0.5) \\
-    Z &\sim \text{Bernoulli}(p*) \\
+    Z &\sim \text{Bernoulli}(p^*) \\
     p^* &= \begin{cases}
         0.9 ,& \text{if } X + Y \gt 0\\
         0.05,              & \text{otherwise}
@@ -1412,7 +1546,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def discrete_collider_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("X", "p_star"),
@@ -1429,13 +1563,13 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Note: the structure above should not be confused with the "Descendant" discussed later. Here $p^*$ is a determinstic function of $X$ and $Y$ that defines the probability distribution over $Z$, wheras in the Descendant, the  downstream variable (e.g. $A$) "leaks" information about the collider.
+    Note: the structure above should not be confused with the "Descendant" discussed later. Here $p^*$ is a deterministic function of $X$ and $Y$ that defines the probability distribution over $Z$, whereas in the Descendant, the downstream variable (e.g. $A$) "leaks" information about the collider.
     """)
     return
 
 
 @app.cell
-def _():
+def simulate_discrete_collider():
     np.random.seed(123)
     _n_samples = 1000
 
@@ -1460,8 +1594,8 @@ def _():
 
 
 @app.cell
-def _(discrete_collider):
-    summarize_discrete_counfound_simulation(**discrete_collider)
+def discrete_collider_summary(discrete_collider):
+    summarize_discrete_confound_simulation(**discrete_collider)
     return
 
 
@@ -1474,7 +1608,7 @@ def _():
     \begin{align*}
     X &\sim \text{Normal}(0, 1) \\
     Y &\sim \text{Normal}(0, 1) \\
-    Z &\sim \text{Bernoulli}(p*) \\
+    Z &\sim \text{Bernoulli}(p^*) \\
     p^* &= \frac{1}{1 + e^{-(\alpha + \beta_{XZ}X + \beta_{YZ}Y)}} \\
     \end{align*}
     $$
@@ -1483,7 +1617,7 @@ def _():
 
 
 @app.cell
-def _():
+def simulate_continuous_collider():
     np.random.seed(1234)
 
     _n_samples = 500
@@ -1502,7 +1636,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(collider_data):
+def continuous_collider_plot(collider_data):
     plot_continuous_confound_simulation(collider_data, "The Collider\n$X \\rightarrow  Z \\leftarrow Y$")
     plt.gcf()
     return
@@ -1514,13 +1648,63 @@ def _():
     - Total sample shows no association
     - Stratifying by Z shows negative association
 
-    ### Why does this happen?
+    ### Why does this happenX
 
     **Thresholding effect**
     - If either $X$ OR $Y$ are big enough, it will result in a conditional value (the green deterministic function $p*$ above) that is large enough to associate the sample with $Z=1$.
     - Similarly if either $X$ OR $Y$ are small enough, it will associate the sample with $Z=0$.
-    - If one of those is is hi/low enough while the other is average or lower/larger, this will induce a negative correlation on average.
+    - If one of those is high/low enough while the other is average or lower/larger, this will induce a negative correlation on average.
     """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    #### Confound playground
+    Pick an elemental confound and change how strongly $Z$ is tied to $X$ and $Y$: $1$ matches the examples above, and $0$ removes the links. Compare the black line for the total sample with the colored lines stratified by $Z$. For the Fork and the Pipe, stratifying by $Z$ removes the association between $X$ and $Y$; for the Collider, stratifying creates one.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def confound_playground_controls():
+    confound_type = mo.ui.radio(["Fork", "Pipe", "Collider"], value="Fork", label="Confound", inline=True)
+    confound_strength = mo.ui.slider(0, 3, step=0.25, value=1, label="Strength of the links to $Z$", show_value=True)
+    confound_n = mo.ui.slider(steps=[100, 200, 500, 1000], value=500, label="Samples", show_value=True)
+    return confound_n, confound_strength, confound_type
+
+
+@app.cell(hide_code=True)
+def confound_playground_explorer(confound_n, confound_strength, confound_type):
+    np.random.seed(1234)
+    _n = confound_n.value
+    _s = confound_strength.value
+    if confound_type.value == "Fork":
+        _Z = stats.bernoulli.rvs(p=.5, size=_n)
+        _X = stats.norm.rvs(loc=_s * (2 * _Z - 1), size=_n)
+        _Y = stats.norm.rvs(loc=_s * (2 * _Z - 1), size=_n)
+        _title = "The Fork\n$X \\leftarrow Z \\rightarrow Y$"
+    elif confound_type.value == "Pipe":
+        _X = stats.norm.rvs(size=_n)
+        _Z = stats.bernoulli.rvs(p=utils.invlogit(_s * _X))
+        _Y = stats.norm.rvs(loc=_s * (2 * _Z - 1), size=_n)
+        _title = "The Pipe\n$X \\rightarrow Z \\rightarrow Y$"
+    else:
+        _X = stats.norm.rvs(size=_n)
+        _Y = stats.norm.rvs(size=_n)
+        _Z = stats.bernoulli.rvs(p=utils.invlogit(-2 + 2 * _s * (_X + _Y)))
+        _title = "The Collider\n$X \\rightarrow Z \\leftarrow Y$"
+
+    plot_continuous_confound_simulation(pd.DataFrame({"Z": _Z, "X": _X, "Y": _Y}), _title)
+    _rows = [("total sample", np.corrcoef(_X, _Y)[0, 1])] + [
+        (f"Z = {_z}", np.corrcoef(_X[_Z == _z], _Y[_Z == _z])[0, 1]) for _z in [0, 1]
+    ]
+    _table = mo.md("| | corr(X, Y) |\n|---|---|\n" + "\n".join(f"| {_k} | {_v:.2f} |" for _k, _v in _rows))
+    mo.vstack([
+        mo.hstack([confound_type, confound_strength, confound_n], justify="start", gap=2),
+        mo.hstack([plt.gcf(), _table], justify="start", align="center"),
+    ])
     return
 
 
@@ -1538,7 +1722,7 @@ def _():
 
 
 @app.cell
-def _():
+def grant_awards_plot():
     np.random.seed(123)
     _n_samples = 200
 
@@ -1569,22 +1753,67 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    #### Selection threshold
+    Change how strict the selection is. Newsworthiness and trustworthiness are independent among all proposals, but the stricter the threshold, the more negative their correlation among the awarded grants.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def selection_threshold_controls():
+    grant_threshold = mo.ui.slider(0, 3, step=0.25, value=2, label="Award if $N + T >$", show_value=True)
+    grant_n = mo.ui.slider(steps=[200, 500, 1000, 2000], value=200, label="Proposals", show_value=True)
+    return grant_n, grant_threshold
+
+
+@app.cell(hide_code=True)
+def selection_threshold_explorer(grant_n, grant_threshold):
+    np.random.seed(123)
+    _N = stats.norm.rvs(size=grant_n.value)
+    _T = stats.norm.rvs(size=grant_n.value)
+    _A = (_N + _T > grant_threshold.value).astype(int)
+
+    _fig, _ax = plt.subplots()
+    utils.plot_scatter(_N[_A == 0], _T[_A == 0], color="gray", label="rejected")
+    utils.plot_scatter(_N[_A == 1], _T[_A == 1], color="C0", label="awarded")
+    _title = f"All proposals: r = {np.corrcoef(_N, _T)[0, 1]:.2f}"
+    if _A.sum() >= 3:
+        _N_A, _T_A = _N[_A == 1], _T[_A == 1]
+        _awarded_model = smf.ols("T ~ N", data=pd.DataFrame({"N": _N_A, "T": _T_A})).fit()
+        utils.plot_line(_N_A, _awarded_model.predict(), color="k", label="Post-selection\nTrend")
+        _title += f"\nAwarded ({_A.sum()}): r = {np.corrcoef(_N_A, _T_A)[0, 1]:.2f}"
+    plt.xlabel("Newsworthiness")
+    plt.ylabel("Trustworthiness")
+    plt.axis("square")
+    plt.legend()
+    plt.title(_title)
+    mo.vstack([
+        mo.hstack([grant_threshold, grant_n], justify="start", gap=2),
+        _fig,
+    ])
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     ## Example: Age, Happiness, and Marriage
 
     $A \rightarrow M \leftarrow H$
 
-    - The older you are, the more changes of being married
+    - The older you are, the more chances of being married
     - The happier you are, the more amicable you are, and thus are more likely to have another person marry you
     - Here, **age does not influence happiness**, they are independent
 
-    Below is a janky version of the simulation in the lecture. Rather than running the termporal simulation, starting at age 18,
-    and sampling marital status for each happiness level at each point in time, we just do the whole simulation in one sample, modeling the probability of being married as a combination of both Age $A$ and Happiness $H$: $p_{married} = \text{invlogit}(\beta_H (\bar H - 18) + \beta_A A)$
+    Below is a janky version of the simulation in the lecture. Rather than running the temporal simulation, starting at age 18,
+    and sampling marital status for each happiness level at each point in time, we just do the whole simulation in one sample, modeling the probability of being married as a combination of both Age $A$ and Happiness $H$: $p_{married} = \text{invlogit}(\beta_H H + \beta_A (A - 58))$, with $\beta_H = 20$ and $\beta_A = 1$
     """)
     return
 
 
 @app.cell
-def _():
+def age_happiness_marriage_plot():
+    np.random.seed(123)
     _age = np.arange(1, 71)
     _happiness = np.linspace(-2, 2, 40)
     _age_grid, _happiness_grid = np.meshgrid(_age, _happiness)
@@ -1604,7 +1833,7 @@ def _():
     _married_grid = np.array(_married_grid).astype(int)
 
     _fig, _ax = plt.subplots()
-    utils.plot_scatter(_age_grid[_married_grid==0], _happiness_grid[_married_grid==0], s=20, alpha=1, color='lightgray', label='Unarried')
+    utils.plot_scatter(_age_grid[_married_grid==0], _happiness_grid[_married_grid==0], s=20, alpha=1, color='lightgray', label='Unmarried')
     utils.plot_scatter(_age_grid[_married_grid==1], _happiness_grid[_married_grid==1], s=20, alpha=1, color='C0', label='Married')
     plt.xlabel("Age")
     plt.ylabel("Happiness (std)")
@@ -1630,7 +1859,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def restaurant_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("F", "S"),
@@ -1653,7 +1882,7 @@ def _():
     $$
     \begin{align*}
     S &\sim \text{Bernoulli}(p_S) \\
-    p_S &= \text{invlogit}(\alpha+ \beta_Q Q + \beta_L L) \\
+    p_S &= \text{invlogit}(\alpha+ \beta_F F + \beta_L L) \\
     \end{align*}
     $$
     """)
@@ -1661,7 +1890,7 @@ def _():
 
 
 @app.cell
-def _():
+def simulate_restaurants():
     np.random.seed(123)
     _n_restaurants = 1000
     _food_quality = stats.norm.rvs(size=_n_restaurants)  # standardized food quality
@@ -1676,24 +1905,28 @@ def _():
     )
     _stays_in_business = stats.bernoulli.rvs(_p_success)
 
-    data = data = pd.DataFrame(
+    restaurant_data = pd.DataFrame(
         np.vstack(
             [_location_quality, _food_quality, _stays_in_business]
         ).T,
         columns=['location_quality', 'food_quality', 'stays_in_business']
     )
-    return (data,)
+    return (restaurant_data,)
 
 
 @app.cell
-def _(data):
-    models = {}
-    models['unstratified'] = smf.ols("food_quality ~ location_quality", data=data).fit()
+def restaurant_fits(restaurant_data):
+    restaurant_models = {}
+    restaurant_models['unstratified'] = smf.ols("food_quality ~ location_quality", data=restaurant_data).fit()
 
     # Stratified Models (post-hoc selection based on successful business)
-    models['business_failed'] = smf.ols("food_quality ~ location_quality", data=data[data.stays_in_business==0]).fit()
-    models['business_succeeded'] = smf.ols("food_quality ~ location_quality", data=data[data.stays_in_business==1]).fit()
-    return (models,)
+    restaurant_models['business_failed'] = smf.ols(
+        "food_quality ~ location_quality", data=restaurant_data[restaurant_data.stays_in_business==0]
+    ).fit()
+    restaurant_models['business_succeeded'] = smf.ols(
+        "food_quality ~ location_quality", data=restaurant_data[restaurant_data.stays_in_business==1]
+    ).fit()
+    return (restaurant_models,)
 
 
 @app.function
@@ -1705,12 +1938,12 @@ def plot_sms_restaurant_model_fit(model, xs, label, color):
 
 
 @app.cell(hide_code=True)
-def _(data, models):
+def restaurant_plot(restaurant_data, restaurant_models):
     _xs = np.linspace(-4, 4, 20)
 
     _fig, _ax = plt.subplots()
     for _sib, _label in enumerate(["business_failed", "business_succeeded"]):
-        _scatter_data = data[data.stays_in_business==_sib]
+        _scatter_data = restaurant_data[restaurant_data.stays_in_business==_sib]
         utils.plot_scatter(
             _scatter_data.location_quality,
             _scatter_data.food_quality,
@@ -1718,9 +1951,9 @@ def _(data, models):
             label="successful" if _sib else "failed"
         )
 
-        plot_sms_restaurant_model_fit(models[_label], _xs, color=f'C{_sib}', label=None)
+        plot_sms_restaurant_model_fit(restaurant_models[_label], _xs, color=f'C{_sib}', label=None)
 
-    plot_sms_restaurant_model_fit(models['unstratified'], _xs, label='unstratified', color='black')
+    plot_sms_restaurant_model_fit(restaurant_models['unstratified'], _xs, label='unstratified', color='black')
 
     plt.xlabel("location quality (standardized)")
     plt.ylabel("food quality (standardized)")
@@ -1743,7 +1976,7 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## The Decendent
+    ## The Descendant
     Takes on a diluted behavior of the parent.
     - If the parent forms a Collider, the descendant acts as a weak collider. Same for Pipe and Fork descendants
     """)
@@ -1763,7 +1996,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def pipe_descendant_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("X", "Z"),
@@ -1794,7 +2027,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def pipe_descendant_labelled_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("X", "Z"),
@@ -1812,7 +2045,8 @@ def _():
 
 
 @app.cell
-def _():
+def simulate_pipe_descendant():
+    np.random.seed(1234)
     _n_samples = 1000
 
     _X = stats.bernoulli.rvs(p=.5, size=_n_samples)
@@ -1835,21 +2069,23 @@ def _():
     Demonstrate that
 
     - $X \not \perp Y$
-    - $X \perp Y | Z$
+    - $X \not \perp Y | A$, but the correlation is weaker than in the total sample
     """)
     return
 
 
 @app.cell
-def _(discrete_descendant):
-    summarize_discrete_counfound_simulation(discrete_descendant["X"], discrete_descendant["Y"], discrete_descendant["A"])
+def pipe_descendant_summary(discrete_descendant):
+    summarize_discrete_confound_simulation(
+        discrete_descendant["X"], discrete_descendant["Y"], discrete_descendant["A"], z_name="A"
+    )
     return
 
 
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## Discrete Example: Collider Descendant
+    ## Example: Collider Descendant
     In this example the descendant branches off of a Collider. Therefore we should observe the following:
     - $X \perp Y$
     - $X \not \perp Y | Z$
@@ -1859,7 +2095,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def collider_descendant_dag():
     utils.draw_causal_graph(
         edge_list=[
             ("X", "Z"),
@@ -1884,7 +2120,7 @@ def _():
         0.9 ,& \text{if } X + Y \gt 2\\
         0.1,              & \text{otherwise}
     \end{cases} \\
-    q^* &= 0.05 Z + 0.95 (1 - Z)
+    q^* &= 0.95 Z + 0.05 (1 - Z)
     \end{align*}
     $$
     """)
@@ -1892,7 +2128,8 @@ def _():
 
 
 @app.cell
-def _():
+def simulate_collider_descendant():
+    np.random.seed(123)
     _n_samples = 1000
 
     _X = stats.norm.rvs(size=_n_samples)
@@ -1908,7 +2145,7 @@ def _():
 
 
 @app.cell
-def _(collider_descendant):
+def collider_descendant_correlations(collider_descendant):
     _X, _Y, _A = collider_descendant["X"], collider_descendant["Y"], collider_descendant["A"]
     print(f'Correlation between X and Y: {np.corrcoef(_X, _Y)[0, 1]:1.2}')
     for _a in [0, 1]:
@@ -1919,8 +2156,58 @@ def _(collider_descendant):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    #### Descendant strength
+    The descendant $A$ copies its parent $Z$ with probability $P(A = Z)$. At $0.5$, $A$ is pure noise and conditioning on it changes nothing; at $1$, $A$ is $Z$, and conditioning on $A$ is the same as conditioning on $Z$. In between, $A$ acts as a diluted version of $Z$.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def descendant_strength_controls():
+    descendant_parent = mo.ui.radio(["Pipe", "Collider"], value="Pipe", label="Parent", inline=True)
+    descendant_fidelity = mo.ui.slider(0.5, 1, step=0.05, value=0.9, label="$P(A = Z)$", show_value=True)
+    return descendant_fidelity, descendant_parent
+
+
+@app.cell(hide_code=True)
+def descendant_strength_explorer(descendant_fidelity, descendant_parent):
+    np.random.seed(1234)
+    _n = 2000
+    _f = descendant_fidelity.value
+    if descendant_parent.value == "Pipe":
+        _X = stats.bernoulli.rvs(p=.5, size=_n)
+        _Z = stats.bernoulli.rvs(p=.9 * _X + .1 * (1 - _X))
+        _Y = stats.bernoulli.rvs(p=.9 * _Z + .1 * (1 - _Z))
+    else:
+        _X = stats.norm.rvs(size=_n)
+        _Y = stats.norm.rvs(size=_n)
+        _Z = stats.bernoulli.rvs(p=np.where(_X + _Y > 2, .9, .1))
+    _A = stats.bernoulli.rvs(p=_f * _Z + (1 - _f) * (1 - _Z))
+
+    _groups = {"total": np.ones(_n, dtype=bool)}
+    for _name, _values in [("Z", _Z), ("A", _A)]:
+        for _v in [0, 1]:
+            _groups[f"{_name} = {_v}"] = _values == _v
+    _corrs = {_k: np.corrcoef(_X[_mask], _Y[_mask])[0, 1] for _k, _mask in _groups.items()}
+
+    _fig, _ax = plt.subplots(figsize=(7, 3))
+    plt.bar(list(_corrs), list(_corrs.values()), color=["k", "C0", "C0", "C1", "C1"], alpha=.7)
+    plt.axhline(0, color="k", linewidth=1)
+    plt.ylim(-1, 1)
+    plt.ylabel("corr(X, Y)")
+    plt.title(f"{descendant_parent.value} descendant, $P(A = Z) = {_f:.2f}$")
+    mo.vstack([
+        mo.hstack([descendant_parent, descendant_fidelity], justify="start", gap=2),
+        _fig,
+    ])
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     ## Descendants are everywhere
-    - Many measurements aree **proxies** for what we want to measure
+    - Many measurements are **proxies** for what we want to measure
 
     ## Unobserved Confounds
     - Confounds are everywhere, and can ruin your day
@@ -1931,7 +2218,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _():
+def environment():
     mo.accordion({"Environment": mo.plain_text(init_notebook.watermark_report())})
     return
 
