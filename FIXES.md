@@ -269,3 +269,43 @@ Notes:
 - The correlated pooling demo holds $\bar\alpha$, $\bar\beta$, $\sigma$ and $\tau$ at the correlated model's posterior means and computes one district's posterior exactly on a grid, so its estimates are close to, but not the same as, the MCMC fit.
 - The funnel explorer's fits use `float` values of $\sigma_v$, so $\sigma_v = 1.0$ is a separate fit from the static cell's integer `1` (76 against 108 centered divergences). The funnel models are sampled without a seed.
 - The static LKJ ellipse plot calls `pm.draw` once per ellipse (80 calls), which takes about 30 s when the notebook opens. The LKJ explorer draws all its samples in one call (about 1 s); a comment in `sample_LKJCorr_prior` shows how the static plot could do the same.
+
+## Lecture 17 - Measurement and Misclassification
+
+Code:
+
+- The paternity simulation never tied the test result to actual paternity. Both branches of `_p_father_star` computed the same value, $p + (1-p)f$, so `is_father*` was drawn without looking at `is_father`. Now an actual extra-marital paternity always tests positive, and any other dyad tests positive with probability $f$ (13 false positives; actual rate 0.482, measured 0.511).
+- Both misclassification models (the vanilla and the log-scale one) added the $X^*=1$ and $X^*=0$ potentials for every dyad, whatever the test said, so they never looked at the data. Their average $p$ of 0.474 was just the value that maximizes $(p + (1-p)f)(1-p)$, and its match with the actual rate was a coincidence; the β estimates stayed near 0.07. Each dyad now contributes only the term for its observed result. After the refit, the misclassification model recovers the actual rate (0.485) and the naive model the measured rate (0.512).
+- The `log1p` helper computed `log(1 + x)`, the naive version it is meant to replace. It now uses `pm.math.log1p`.
+- The divorce and marriage standard errors were divided by the pandas standard deviation (`ddof=1`), while `utils.standardize` divides by `ddof=0`, so the standard errors were about 1% too small. Both now use `ddof=0`.
+- The misclassification diagrams were missing the $X=1 \to X^*=1$ branch (probability 1).
+- Removed a leftover scratch cell, the duplicate `_MOM_ID` in the log-scale model, the unused `N` and `MOM_TRAITS`, a duplicate `("P", "eA")` key in the measurement DAG (the purple entry won, so the drawing doesn't change), and the duplicated `plt.legend()` and prints in the paternity comparison plot.
+- The paternity comparison plot also marks the actual rate, and its legend says "misclassification" instead of "measurement error".
+- The `log_sum_exp` docstring said `pm.math.logsumexp` isn't numerically stable. It subtracts the maximum and is stable; the helper only avoids stacking the two terms.
+- The `log1p(-p)` demo printed its label as "log1p(1-p)".
+
+Text that didn't match the code:
+
+- The paternity results claimed that modeling misclassification gives "a much tighter posterior". The average rate has about the same posterior sd (0.022 and 0.021) in both models. The paragraph now gives the refit results.
+- The generative model was $\text{logit}(p_i) = \alpha + \mu_{M[i]} + \delta_{T[i]}$; the code uses $\alpha + \beta_M M_{\text{mother}[i]} + \beta_T T_i$.
+- The divorce model was missing σ, and the predictors and errors were missing their $i$ subscripts. $S_i$ is the reported standard error, not "the standard deviation estimated from the sample".
+- The model notes said "we have no likelihood". They now explain that $X_i$ is averaged out and that each dyad uses the term for its observed $X^*_i$.
+- The diagram captions said "observing $X=1$" and "$X=0$"; they mean $X^*$.
+- "Error in parental income reporting $P^*$" referred to the error $e$.
+- Floating-point section:
+  - `pm.math.log1mexp` computes $\log(1 - \exp(x))$, not $\log(1 - \exp(-x))$.
+  - `pm.log(1 - p)` doesn't exist.
+  - The Taylor threshold was written $e{-4}$ instead of $10^{-4}$.
+  - The `logsumexp` equations had unbalanced parentheses.
+  - The $p \approx 0$ bullet didn't say what goes wrong (precision is lost).
+  - "overflow (rounding to one)" described loss of precision.
+- The pancake text's definition of $U, D$ was garbled.
+- Typos: lecure, downsid, measurment (×7), Wafflehouse, Divorcd, probablity, proporitonal, estiamted, collegues, kinships systems, "right out", simultanous, accouting, tigher, "effect" for affect, "cause us over-estimate", "states more uncertainty", `$D*$`.
+
+Notes:
+
+- Each dyad has a single child, so $\beta_T$ is only weakly identified: its posterior (1.0 ± 0.7) stays close to the prior (about 0.8 ± 0.6), far from the true 3.
+- The divorce conclusions hold after the `ddof` fix. Modeling measurement error weakens $\beta_A$ (−0.60 to −0.49) and raises $\beta_M$ (−0.06 to 0.27).
+- The shrinkage explorer holds α, $\beta_A$ and $\beta_M$ at their posterior means and computes each state's posterior exactly. At the default settings it is within 0.05 (std units) of the MCMC posterior means.
+- The measurement-error explorer uses least-squares slopes over 500 simulated datasets instead of MCMC fits, so it updates instantly.
+- The misclassification explorer uses a single rate without covariates and exact grid posteriors. Its default ($p = f = 0.05$) shows the case the simulated data can't: the naive estimate is about double the actual rate.
