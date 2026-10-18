@@ -90,6 +90,7 @@ Progress:
 - [x] **05:** 6 widgets (prior predictive, breaking the fork, intervention size, confound playground, selection threshold, descendant strength); fixed the cross-tab labels, the no-op Loc/South shuffle and all-zero marriage rate in `simulate_divorce`, the true-value markers in the posterior plot, missing seeds, and equations that didn't match the code. The β priors are now Normal(0, 0.5) as the text says, and the simulation test now has a fork (`beta_age_marriage=1`).
 - [x] **06:** 4 widgets (backdoor path finder with d-separation, backdoor simulation, good & bad controls lab, bias amplification sliders); fixed the bias-amplification `beta_XY`, the backdoor-path text that called Z a collider on two pipe paths, the A-perspective text, DAG edge highlights on missing edges, missing seeds, and the "correct/wrong" legends on the ancestor plots.
 - [x] **12:** 3 widgets (σ and shrinkage explorer over the grid-search fits, hierarchical prior explorer, pooling simulator with an exact grid posterior); fixed the shifted `stats.expon(1)` σ prior in the prior plot, the single-chain σ overlay, `alph_bar`, the τ prior and latent Mundlak equations, and unused names.
+- [x] **13:** 3 widgets (shrinkage explorer with an exact grid posterior at a fixed σ, district inspector, centered vs non-centered fit with a run button); fixed the district indexing that plotted districts 53 and 54 in each other's place, the τ and collider text, the rural-vs-urban scatter, and the sample size.
 
 All fixes made so far are listed in [FIXES.md](FIXES.md).
 

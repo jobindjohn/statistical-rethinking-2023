@@ -143,3 +143,28 @@ Notes:
 - The pooling simulator computes the partial-pooling posterior exactly on a grid instead of with MCMC. On the frog data it matches the MCMC fit to within 0.002 in survival probability.
 - The latent Mundlak refit recovers β_XY ≈ 1.17 (true 1) and β_ZY ≈ −0.40 (true −0.5).
 - There is no widget for the random-confound section: each setting would refit five MCMC models, which takes minutes.
+
+## Lecture 13 - Multilevel Adventures
+
+Code:
+
+- The district models numbered districts with `pd.factorize`, which skips district 54 (it has no data), so districts 55 to 61 used the parameters labeled 54 to 60. The plotting helper moved the no-data estimate back to position 52 instead of 53, so the plots showed the no-data estimate at district 53 and district 53's estimate at 54. The models now index by district number (`FERTILITY.district.values - 1`), and the reordering step is gone. The author's note about an indexing bug in the error bars is removed.
+- The district-urban model recorded `p_C`, an exact copy of `p_C_urban`. It is removed, and `p_C_rural` and `p_C_urban` now have the `district` dimension.
+- Renamed `plot_survival_posterior` (left over from the frogs) to `plot_district_posterior`.
+- The rural-vs-urban scatter drew lines at 0.5, which can't show whether urban use is higher. It now draws the urban = rural diagonal.
+- The plot of the standard deviations also shows $\sqrt{\sigma^2 + \tau^2}$, the spread of the urban log-odds.
+
+Text that didn't match the code:
+
+- The survey has 1934 women, not 1924; district 54 has no data.
+- The district without data is 54, not 49 (district 49 has 4 women).
+- $\tau$ was called the standard deviation for urban areas. It is the spread of the urban *difference* $\beta_j$; the urban log-odds $\alpha_j + \beta_j$ vary with $\sqrt{\sigma^2 + \tau^2}$.
+- "A majority of points are to the left of the vertical line" only showed that rural use is low. The text now says all but one district lie above the diagonal.
+- $K$ was called a collider that opens the confound through $D$, but $D$ is in the model. The text now says $K$ is a mediator of $U$, and a collider on $U \rightarrow K \leftarrow F \rightarrow C$ through the unobserved family traits $F$, which is added to the DAG.
+- A heading said "posterior predictive" over a plot of posterior means.
+
+Notes:
+
+- The refit after the indexing fix barely changes the estimates (σ 0.52, τ 0.54, correlation of rural and urban means 0.75).
+- The shrinkage explorer holds σ fixed, so at σ ≈ 0.52 its estimates are close to, but not the same as, the MCMC fit, which also averages over σ.
+- The centered version of the district-urban model (behind a run button) samples badly on purpose: 771 divergences, an ESS of 7 for τ and r̂ 1.56, against none, 396 and 1.01 for the non-centered model.
